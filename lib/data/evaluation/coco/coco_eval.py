@@ -15,6 +15,7 @@ def do_coco_evaluation(
     predictions,
     box_only,
     output_folder,
+    image_ids,
     iou_types,
     expected_results,
     expected_results_sigma_tol,
@@ -51,6 +52,7 @@ def do_coco_evaluation(
 
     results = COCOResults(*iou_types)
     logger.info("Evaluating predictions")
+    # breakpoint()
     for iou_type in iou_types:
         with tempfile.NamedTemporaryFile() as f:
             file_path = f.name
@@ -63,7 +65,8 @@ def do_coco_evaluation(
     logger.info(results)
     check_expected_results(results, expected_results, expected_results_sigma_tol)
     if output_folder:
-        torch.save(results, os.path.join(output_folder, "coco_results.pth"))
+        torch.save(coco_results, os.path.join(output_folder, f"{image_ids[0]}_coco_results_bbox.pth"))
+        torch.save(results, os.path.join(output_folder, f"{image_ids[0]}_coco_results_statics.pth"))
     return results, coco_results
 
 

@@ -6,7 +6,7 @@ import numpy as np
 #                 gt_triplet_boxes,
 #                 pred_triplet_boxes,
 #                 iou_thresh, file_name='test'):
-def save_value( pred_bbox_list,
+def save_triplet( pred_bbox_list,
                 recall,
                 pred_triplet_list,
                 FileName="null", json_file_name='result_img_0'):
@@ -29,12 +29,12 @@ def save_value( pred_bbox_list,
     json_data["bbox"] = pred_bbox_list.tolist()
     json_data["triplet"] = pred_triplet_list.tolist()
 
-    base_dir_path = '/home/ncl/ADD/sg_inference/graph_rcnn/ontology/data'
+    base_dir_path = '/home/ncl/ADD_sy/inference/sg_inference/results/triplet'
     with open(base_dir_path+'/'+json_file_name+'.json', 'w') as outfile:
         json.dump(json_data, outfile)
 
-def save_scores(scores, name_dict,  json_file_name= 'result_score_img_0', FileName='null'):
-    base_dir_path = '/home/ncl/ADD/sg_inference/graph_rcnn/ontology/data'
+def save_triplet_scores(scores, name_dict,  json_file_name= 'result_score_img_0', FileName='null'):
+    base_dir_path = '/home/ncl/ADD_sy/inference/sg_inference/results/triplet'
     json_data = {
         "FileName": FileName,
         "sub_score": [],
@@ -54,7 +54,7 @@ def save_scores(scores, name_dict,  json_file_name= 'result_score_img_0', FileNa
         json.dump(name_dict, outfile)
 
 def save_cls_scores(scores, json_file_name= 'cls_score_img_0', FileName='null' ):
-    base_dir_path = '/home/ncl/ADD/sg_inference/graph_rcnn/ontology/data'
+    base_dir_path = '/home/ncl/ADD_sy/inference/sg_inference/results/triplet'
     json_data = {
         "FileName": FileName,
         "cls_score":[]

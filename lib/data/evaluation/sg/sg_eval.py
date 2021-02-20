@@ -1,10 +1,10 @@
 import numpy as np
 import torch
 from .evaluator import BasicSceneGraphEvaluator
-from .save_json import save_value, save_scores, save_cls_scores
+from .save_json import save_triplet, save_triplet_scores, save_cls_scores
 import os
 
-def do_sg_evaluation(dataset, predictions, predictions_pred, output_folder, logger):
+def do_sg_evaluation(dataset, predictions, predictions_pred, output_folder, image_ids,logger):
     """
     scene graph generation evaluation
     """
@@ -45,7 +45,7 @@ def do_sg_evaluation(dataset, predictions, predictions_pred, output_folder, logg
             )).prod(1)
             sorted_inds = np.argsort(-scores)
             sorted_inds = sorted_inds[scores[sorted_inds] > 0] #[:100]
-
+            # breakpoint()
             pred_entry = {
                 'pred_boxes': prediction.bbox.numpy(),
                 'pred_classes': prediction.get_field("labels").numpy(),
@@ -59,12 +59,11 @@ def do_sg_evaluation(dataset, predictions, predictions_pred, output_folder, logg
                 pred_entry,
             )
 
-            a,b = evaluate(gt_boxlist.get_field("labels"), gt_boxlist.bbox, gt_boxlist.get_field("pred_labels"),
+            evaluate(gt_boxlist.get_field("labels"), gt_boxlist.bbox, gt_boxlist.get_field("pred_labels"),
                     prediction.bbox, prediction.get_field("scores"), prediction.get_field("labels"),
                     prediction_pred.get_field("idx_pairs"), prediction_pred.get_field("scores"),
-                    top_Ns, result_dict, mode)
-            print(a,b)
-            sys.exit(1)
+                    top_Ns, result_dict, mode, image_ids = image_ids)
+
         evaluator[mode].print_stats(logger)
         logger.info('=====================' + mode + '(IMP)' + '=========================')
         logger.info("{}-recall@20: {}".format(mode, np.mean(np.array(result_dict[mode + '_recall'][20]))))
@@ -75,7 +74,7 @@ def evaluate(gt_classes, gt_boxes, gt_rels,
              obj_rois, obj_scores, obj_labels,
              rel_inds, rel_scores,
              top_Ns, result_dict,
-             mode, iou_thresh=0.5):
+             mode, image_ids, iou_thresh=0.5):
 
     gt_classes = gt_classes.cpu()
     gt_boxes = gt_boxes.cpu()
@@ -164,7 +163,7 @@ def evaluate(gt_classes, gt_boxes, gt_rels,
     else:
         raise NotImplementedError('Incorrect Mode! %s' % mode)
     #relation socres/ class_scores
-    save_cls_scores(class_scores, json_file_name='test3_cls_score')
+    # save_cls_scores(class_scores, json_file_name='test3_cls_score')
     pred_triplets, pred_triplet_boxes, relation_scores = \
         _triplet(predicates, relations, classes, boxes,
                  predicate_scores, class_scores, is_pred=False)
@@ -173,7 +172,7 @@ def evaluate(gt_classes, gt_boxes, gt_rels,
     # breakpoint()
     sorted_inds = np.argsort(relation_scores)[::-1]
     sorted_inds_obj = np.argsort(class_scores)[::-1]
-    save_cls_scores(class_scores, json_file_name='test4_cls_score')
+    # save_cls_scores(class_scores, json_file_name='test4_cls_score')
     # save this part
 
     for k in result_dict[mode + '_recall']:
@@ -194,21 +193,24 @@ def evaluate(gt_classes, gt_boxes, gt_rels,
                                   pred_triplet_boxes[keep_inds,:],
                                   iou_thresh)
         num_gt = gt_triplets.shape[0]
-        torch.save(gt_triplet_boxes, os.path.join('/home/ncl/ADD/sg_inference/graph_rcnn/graph-rcnn.pytorch-master/results','test.pth'))
+        # torch.save(gt_triplet_boxes, os.path.join('/home/ncl/ADD/sg_inference/graph_rcnn/graph-rcnn.pytorch-master/results','test.pth'))
         # save_value(k, gt_triplets,
         #             pred_triplets[keep_inds,:],
         #             gt_triplet_boxes,
         #             pred_triplet_boxes[keep_inds,:],
         #             iou_thresh)
-        save_value(pred_triplet_boxes[keep_inds, :],
-                   k,
-                   pred_triplets[keep_inds, :],
-                   )
+        # save_value(pred_triplet_boxes[keep_inds, :],
+        #            k,
+        #            pred_triplets[keep_inds, :],
+        #            )
         result_dict[mode + '_recall'][k].append(recall / num_gt)
         # result_dict[mode + '_triplets'][k].append(triplets_valid)
 
     # for visualization
     # breakpoint()
+    torch.save(pred_triplets[sorted_inds, :], os.path.join('/home/ncl/ADD_sy/inference/sg_inference/results/triplet', f'{image_ids[0]}_pred_triplets_sorted.pth'))
+    torch.save(pred_triplet_boxes[sorted_inds, :],
+               os.path.join('/home/ncl/ADD_sy/inference/sg_inference/results/triplet', f'{image_ids[0]}_pred_boxes_sorted.pth'))
     return pred_triplets[sorted_inds, :], pred_triplet_boxes[sorted_inds, :]
 
 def _triplet(predicates, relations, classes, boxes,
@@ -259,7 +261,7 @@ def _triplet(predicates, relations, classes, boxes,
         triplet_dict['sub'].append(sub_i.tolist())
         triplet_dict['obj'].append(obj_i.tolist())
     # import pdb; pdb.set_trace()
-    save_scores(triplet_sub_pred_obj_scores, triplet_dict, json_file_name='test_result_score')
+    # save_scores(triplet_sub_pred_obj_scores, triplet_dict, json_file_name='test_result_score')
     return triplets, triplet_boxes, triplet_scores
 
 def _relation_recall(gt_triplets, pred_triplets,

@@ -21,12 +21,14 @@ def evaluate(dataset, predictions, output_folder, **kwargs):
             dataset=dataset, predictions=predictions, output_folder=output_folder, **kwargs
         )
         # return voc_evaluation(**args)
+        # coco evaluation
+        # breakpoint()
         return coco_evaluation(**args)
     else:
         dataset_name = dataset.__class__.__name__
         raise NotImplementedError("Unsupported dataset type {}.".format(dataset_name))
 
-def evaluate_sg(dataset, predictions, predictions_pred, output_folder, **kwargs):
+def evaluate_sg(dataset, predictions, predictions_pred, output_folder, image_ids, **kwargs):
     """evaluate scene graph generation performance
     Args:
         dataset: Dataset object
@@ -40,9 +42,11 @@ def evaluate_sg(dataset, predictions, predictions_pred, output_folder, **kwargs)
         evaluation result
     """
     args = dict(
-        dataset=dataset, predictions=predictions, predictions_pred=predictions_pred, output_folder=output_folder, **kwargs
+        dataset=dataset, predictions=predictions, predictions_pred=predictions_pred, output_folder=output_folder, image_ids=image_ids, **kwargs
     )
     if isinstance(dataset, vg_hdf5):
+        # sg evaluation
+        # breakpoint()
         return sg_evaluation(**args)
     else:
         dataset_name = dataset.__class__.__name__

@@ -35,7 +35,7 @@ def test(cfg, args, model=None):
         arguments = {}
         arguments["iteration"] = 0
         model = build_model(cfg, arguments, args.local_rank, args.distributed)
-    model.test(visualize=args.visualize)
+    model.test(output_folder = 'results/bbox/',visualize=args.visualize, live=args.live)
 
 def main():
     ''' parse config file '''
@@ -50,6 +50,7 @@ def main():
     parser.add_argument("--use_freq_prior", action='store_true')
     parser.add_argument("--visualize", action='store_true')
     parser.add_argument("--algorithm", type=str, default='sg_baseline')
+    parser.add_argument("--live", action='store_true')
     args = parser.parse_args()
 
     num_gpus = int(os.environ["WORLD_SIZE"]) if "WORLD_SIZE" in os.environ else 1
@@ -89,4 +90,5 @@ def main():
         test(cfg, args)
 
 if __name__ == "__main__":
+    print('test')
     main()
