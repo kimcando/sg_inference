@@ -4,7 +4,7 @@ Author: Jianwei Yang, Jiasen Lu, Stefan Lee, Dhruv Batra, Devi Parikh
 Contact: jw2yang@gatech.edu
 """
 
-import os
+import os, sys
 import pprint
 import argparse
 import numpy as np
@@ -55,6 +55,8 @@ def main():
 
     num_gpus = int(os.environ["WORLD_SIZE"]) if "WORLD_SIZE" in os.environ else 1
     args.distributed = num_gpus > 1
+    import pdb; pdb.set_trace()
+
     if args.distributed:
         torch.cuda.set_device(args.local_rank)
         torch.distributed.init_process_group(

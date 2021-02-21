@@ -65,17 +65,18 @@ class GraphHandler:
             print(f'number of nodes in this graph: {G.nodes()}')
             print(f'number of edges in this graph: {G.edges()}')
 
-    def generate_SG(self, recall=20):
+    def generate_SG(self, recall=1):
         obj = self.add_sub_obj(rank=recall)
         rel, self.edge_label = self.add_relation(obj, rank=recall)
         self.print_graph_info()
 
-    def add_sub_obj(self, rank=20):
+    def add_sub_obj(self, rank=1):
 
         #  make subject/object dictionary
         obj = {i:[] for i in range(rank)}
         for i in range(rank):
             # import pdb; pdb.set_trace()
+            # breakpoint()
             obj[i].append(self.json_data['triplet'][i]['subject'])
             obj[i].append(self.json_data['triplet'][i]['object'])
 
@@ -86,7 +87,7 @@ class GraphHandler:
                 self.G.add_node(v)
         return obj
 
-    def add_relation(self,obj, rank=20,show_edge_name=True):
+    def add_relation(self,obj, rank=1,show_edge_name=True):
         """
         This is done in only triplet case
         total_rel: dictionary of list
@@ -141,7 +142,7 @@ class JsonTranslator(object):
         self.idx_label = gt_data_obj.get_idx_label
         self.idx_predicate = gt_data_obj.get_idx_predicate
 
-    def make_json(self, data_file, img_name='test',recall=20, FileName=False):
+    def make_json(self, data_file, img_name='test',recall=1, FileName=False):
         with open(data_file) as f:
             data = json.load(f)
 
@@ -163,6 +164,7 @@ class JsonTranslator(object):
             cls_in_trip = [0, -1]
             triple = dict()
             bbox = dict()
+            # breakpoint()
             bbox['id'] = data['triplet'][i][0]
             bbox['x'] = data['bbox'][i][0]
             bbox['y'] = data['bbox'][i][1]
@@ -226,7 +228,7 @@ if __name__=='__main__':
     # server will send generated_json_path
     generated_json_path = '/home/ncl/ADD_sy/inference/sg_inference/results/to_send/0_image.json'
     graph_obj = GraphHandler(generated_json_path)
-    graph_obj.generate_SG(recall=20)
+    graph_obj.generate_SG(recall=1)
     graph_drawer = GraphDrawer(graph_obj)
     graph_drawer.draw_and_save(figure_name='0_sg')
 

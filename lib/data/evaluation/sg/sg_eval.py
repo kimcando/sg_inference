@@ -31,10 +31,11 @@ def do_sg_evaluation(dataset, predictions, predictions_pred, output_folder, imag
             }
 
             # import pdb; pdb.set_trace()
+            breakpoint()
             prediction = prediction.resize((image_width, image_height))
-            obj_scores = prediction.get_field("scores").numpy()
-            all_rels = prediction_pred.get_field("idx_pairs").numpy()
-            fp_pred = prediction_pred.get_field("scores").numpy()
+            obj_scores = prediction.get_field("scores").detach().numpy()
+            all_rels = prediction_pred.get_field("idx_pairs").detach().numpy()
+            fp_pred = prediction_pred.get_field("scores").detach().numpy()
             # multiplier = np.ones((obj_scores.shape[0], obj_scores.shape[0]))
             # np.fill_diagonal(multiplier, 0)
             # fp_pred = fp_pred * multiplier.reshape(obj_scores.shape[0] * (obj_scores.shape[0] - 1), 1)
@@ -48,8 +49,8 @@ def do_sg_evaluation(dataset, predictions, predictions_pred, output_folder, imag
             # breakpoint()
             pred_entry = {
                 'pred_boxes': prediction.bbox.numpy(),
-                'pred_classes': prediction.get_field("labels").numpy(),
-                'obj_scores': prediction.get_field("scores").numpy(),
+                'pred_classes': prediction.get_field("labels").detach().numpy(),
+                'obj_scores': prediction.get_field("scores").detach().numpy(),
                 'pred_rel_inds': all_rels[sorted_inds],
                 'rel_scores': fp_pred[sorted_inds],
             }
@@ -118,17 +119,17 @@ def evaluate(gt_classes, gt_boxes, gt_rels,
                                              gt_class_scores)
 
     # pred
-    box_preds = obj_rois.numpy()
+    box_preds = obj_rois.detach().numpy()
     num_boxes = box_preds.shape[0]
 
-    predicate_preds = rel_scores.numpy()
+    predicate_preds = rel_scores.detach().numpy()
 
     # no bg
     predicate_preds = predicate_preds[:, 1:]
     predicates = np.argmax(predicate_preds, 1).ravel() + 1
     predicate_scores = predicate_preds.max(axis=1).ravel()
 
-    relations = rel_inds.numpy()
+    relations = rel_inds.detach().numpy()
 
     # if relations.shape[0] != num_boxes * (num_boxes - 1):
         # pdb.set_trace()
@@ -153,8 +154,8 @@ def evaluate(gt_classes, gt_boxes, gt_rels,
     elif mode =='sgdet' or mode == 'sgdet+':
         # if scene graph detection task
         # use preicted boxes and predicted classes
-        classes = obj_labels.numpy() # np.argmax(class_preds, 1)
-        class_scores = obj_scores.numpy() # class_preds.max(axis=1)
+        classes = obj_labels.detach().numpy() # np.argmax(class_preds, 1)
+        class_scores = obj_scores.detach().numpy() # class_preds.max(axis=1)
         # boxes = []
         # for i, c in enumerate(classes):
         #     boxes.append(box_preds[i, c*4:(c+1)*4])
