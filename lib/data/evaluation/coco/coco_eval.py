@@ -21,7 +21,7 @@ def do_coco_evaluation(
     expected_results_sigma_tol,
 ):
     logger = logging.getLogger("maskrcnn_benchmark.inference")
-
+    # breakpoint()
     if box_only:
         logger.info("Evaluating bbox proposals")
         areas = {"all": "", "small": "s", "medium": "m", "large": "l"}
@@ -89,11 +89,12 @@ def prepare_for_coco_detection(predictions, dataset):
         labels = prediction.get_field("labels").tolist()
 
         mapped_labels = [i for i in labels]
-
+        # breakpoint()
         coco_results.extend(
             [
                 {
                     "image_id": original_id,
+                    "bbox_id" : k,
                     "category_id": mapped_labels[k],
                     "bbox": box,
                     "score": scores[k],
@@ -101,6 +102,7 @@ def prepare_for_coco_detection(predictions, dataset):
                 for k, box in enumerate(boxes)
             ]
         )
+
     return coco_results
 
 

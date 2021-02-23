@@ -15,8 +15,8 @@ from .scene_parser.rcnn.utils.visualize import select_top_predictions, overlay_b
 from .data.evaluation import evaluate, evaluate_sg
 from .utils.box import bbox_overlaps
 
-from ontology_interface.json_handler import demo_merge_json
-from ontology_interface.getOntoVis import GTDictHandler, JsonTranslator, GraphHandler, GraphDrawer
+from ontology_interface.json_handler import demo_merge_json, demo_merge_json_org
+from ontology_interface.getOntoVis_demo import GTDictHandler, GraphHandlerDemo, GraphDrawer
 import pdb
 from glob import glob
 from PIL import Image
@@ -292,17 +292,18 @@ class OntoSceneGraphGeneration:
                     # import pdb; pdb.set_trace()
                     # breakpoint()
                     demo_merge_json(image_ids)
-                    jsonMaker = JsonTranslator(gt_data_obj)
+                    # jsonMaker = JsonTranslator(gt_data_obj)
                     result_data_path = f'/home/ncl/ADD_sy/inference/sg_inference/results/to_send/{image_ids[0]}_merged.json'
-                    jsonMaker.make_json(result_data_path, img_name=f'{image_ids[0]}_image', recall=10,
-                                        FileName=f'{image_ids[0]}_image')
-                    generated_json_path = f'/home/ncl/ADD_sy/inference/sg_inference/results/to_send/{image_ids[0]}_image.json'
-                    graph_obj = GraphHandler(generated_json_path)
-                    graph_obj.generate_SG(recall=1)
+                    # jsonMaker.make_json(result_data_path, img_name=f'{image_ids[0]}_image', recall=10,
+                    #                     FileName=f'{image_ids[0]}_image')
+                    # generated_json_path = f'/home/ncl/ADD_sy/inference/sg_inference/results/to_send/{image_ids[0]}_image.json'
+                    graph_obj = GraphHandlerDemo(result_data_path, gt_data_obj)
+                    graph_obj.get_name(rank=20)
+                    graph_obj.generate_SG(recall=20)
                     graph_drawer = GraphDrawer(graph_obj)
                     print('done')
                     graph_drawer.draw_and_save(figure_name=f'{image_ids[0]}_sg')
-                    graph_drawer.draw_and_save(figure_name=f'{122}_sg')
+                    # graph_drawer.draw_and_save(figure_name=f'{122}_sg')
                 if live:
                     sg = cv2.imread(
                         f'/home/ncl/ADD_sy/inference/sg_inference/visualize/sg_result/{image_ids[0]}_sg.png')
@@ -642,6 +643,7 @@ class SceneGraphGeneration:
         # print(type(imgs)) # <class 'lib.scene_parser.rcnn.structures.image_list.ImageList'>
         # print('length of predictions',len(predictions))
         for i, prediction in enumerate(predictions):
+            import pdb; pdb.set_trace()
             top_prediction = select_top_predictions(prediction)
             # print('top predcition',len(top_prediction))
             img = imgs.tensors[i].permute(1, 2, 0).contiguous().cpu().numpy() + np.array(self.cfg.INPUT.PIXEL_MEAN).reshape(1, 1, 3)
@@ -654,7 +656,7 @@ class SceneGraphGeneration:
                 img = cv2.imread(
                     f'/home/ncl/ADD_sy/inference/sg_inference/visualize/raw/raw_detection_{img_ids[0]}.jpg')
                 cv2.imshow('raw_image', img)
-                cv2.waitKey(12)
+                cv2.waitKey(20)
             else:
                 cv2.imwrite(os.path.join(visualize_folder + '/' + raw_folder, "raw_detection_{}.jpg".format(img_ids[i])),
                             result)
@@ -668,11 +670,11 @@ class SceneGraphGeneration:
                 img2 = cv2.imread(
                     f'/home/ncl/ADD_sy/inference/sg_inference/visualize/bbox/bbox_detection_{img_ids[0]}.jpg')
                 cv2.imshow('bounding_box_image', img2)
-                cv2.waitKey(12)
+                cv2.waitKey(20)
             else:
                 cv2.imwrite(os.path.join(visualize_folder + '/' + bbox_folder, "bbox_detection_{}.jpg".format(img_ids[i])), result)
 
-    def test(self, data_loader, timer=None, visualize=False, live=False, output_folder="results/"):
+    def test_nono(self, data_loader, timer=None, visualize=False, live=False, output_folder="results/"):
         """
         main body for testing scene graph generation model
         """
@@ -713,6 +715,7 @@ class SceneGraphGeneration:
                 if self.cfg.MODEL.RELATION_ON:
                     output, output_pred = output
                     output_pred = [o.to(cpu_device) for o in output_pred]
+
                 # output_pred
                 # ious = bbox_overlaps(targets[0].bbox, output[0].bbox)
                 # reg_recall = (ious.max(1)[0] > 0.5).sum().item() / ious.shape[0]
@@ -767,7 +770,7 @@ class SceneGraphGeneration:
                                 **extra_args)
                     if visualize:
                         # import pdb; pdb.set_trace()
-                        demo_merge_json(image_ids)
+                        demo_merge_json_org(image_ids)
                         jsonMaker = JsonTranslator(gt_data_obj)
                         result_data_path = f'/home/ncl/ADD_sy/inference/sg_inference/results/to_send/{image_ids[0]}_merged.json'
                         jsonMaker.make_json(result_data_path, img_name=f'{image_ids[0]}_image',
@@ -897,9 +900,10 @@ class SceneGraphGeneration:
 
             print(f'{image_ids[0]} done')
 
-    def test_0220(self, timer=None, visualize=False, live=False, output_folder="results/"):
+    def test(self, timer=None, visualize=False, live=False, output_folder="results/"):
         """
-        main body for testing scene graph generation model
+        test_0220
+        original
         """
         logger = logging.getLogger("scene_graph_generation.inference")
         logger.info("Start evaluating")
@@ -922,7 +926,7 @@ class SceneGraphGeneration:
             logger.info("inference on batch {}/{}...".format(i, len(self.data_loader_test)))
             logger.info("analyzing_model.py 229")
             # TODO
-            import pdb; pdb.set_trace()
+            # import pdb; pdb.set_trace()
             imgs, targets, image_ids = data
             imgs = imgs.to(self.device); targets = [target.to(self.device) for target in targets]
             # if i % 10 == 1:
@@ -933,12 +937,22 @@ class SceneGraphGeneration:
                 if timer:
                     timer.tic()
                 # import pdb; pdb.set_trace()
-                # bbox +
+                # parser.py 의 forward 결과값
+                # detections 는 bbox, detection_pairs는 pair
+                # output = result = (detections, detection_pairs)
                 output = self.scene_parser(imgs)
-
+                # breakpoint()
+                # output check
+                # output check
                 if self.cfg.MODEL.RELATION_ON:
                     output, output_pred = output
                     output_pred = [o.to(cpu_device) for o in output_pred]
+                torch.save(output,
+                           os.path.join('/home/ncl/ADD_sy/inference/sg_inference/results/output',
+                                        f'{image_ids[0]}_output.pth'))
+                torch.save(output_pred,
+                           os.path.join('/home/ncl/ADD_sy/inference/sg_inference/results/output',
+                                        f'{image_ids[0]}_output_pred.pth'))
                 # output_pred
                 ious = bbox_overlaps(targets[0].bbox, output[0].bbox)
                 reg_recall = (ious.max(1)[0] > 0.5).sum().item() / ious.shape[0]
@@ -948,8 +962,8 @@ class SceneGraphGeneration:
                     timer.toc()
                 output = [o.to(cpu_device) for o in output]
 
-                if visualize:
-                    self.visualize_detection_2020(self.data_loader_test.dataset, image_ids, imgs, output, live=live)
+                # if visualize:
+                #     self.visualize_detection_2020(self.data_loader_test.dataset, image_ids, imgs, output, live=live)
                 # CHECK
                 # breakpoint()
                 results_dict.update(
@@ -959,6 +973,7 @@ class SceneGraphGeneration:
                     {img_id: target for img_id, target in zip(image_ids, targets)}
                 )
                 # breakpoint()
+                #"test"
                 if self.cfg.MODEL.RELATION_ON:
                     results_pred_dict.update(
                         {img_id: result for img_id, result in zip(image_ids, output_pred)}
@@ -1020,15 +1035,31 @@ class SceneGraphGeneration:
                                     **extra_args)
                     if visualize:
                         # import pdb; pdb.set_trace()
-                        demo_merge_json(image_ids)
-                        jsonMaker = JsonTranslator(gt_data_obj)
+                        demo_merge_json_org(image_ids)
+                        # jsonMaker = JsonTranslator(gt_data_obj)
                         result_data_path = f'/home/ncl/ADD_sy/inference/sg_inference/results/to_send/{image_ids[0]}_merged.json'
-                        jsonMaker.make_json(result_data_path, img_name=f'{image_ids[0]}_image',FileName=f'{image_ids[0]}_image')
-                        generated_json_path = f'/home/ncl/ADD_sy/inference/sg_inference/results/to_send/{image_ids[0]}_image.json'
-                        graph_obj = GraphHandler(generated_json_path)
-                        graph_obj.generate_SG(recall=1)
+                        # jsonMaker.make_json(result_data_path, img_name=f'{image_ids[0]}_image', recall=10,
+                        #                     FileName=f'{image_ids[0]}_image')
+                        # generated_json_path = f'/home/ncl/ADD_sy/inference/sg_inference/results/to_send/{image_ids[0]}_image.json'
+                        graph_obj = GraphHandlerDemo(result_data_path, gt_data_obj)
+                        graph_obj.get_name(rank=20, image_ids = image_ids)
+                        graph_obj.generate_SG(rank=20)
                         graph_drawer = GraphDrawer(graph_obj)
+                        print('done')
                         graph_drawer.draw_and_save(figure_name=f'{image_ids[0]}_sg')
+                        self.visualize_detection_2020(self.data_loader_test.dataset, image_ids, imgs, output, live=live)
+
+                        # original
+                        # demo_merge_json(image_ids)
+                        # jsonMaker = JsonTranslator(gt_data_obj)
+                        # result_data_path = f'/home/ncl/ADD_sy/inference/sg_inference/results/to_send/{image_ids[0]}_merged.json'
+                        # jsonMaker.make_json(result_data_path, img_name=f'{image_ids[0]}_image',FileName=f'{image_ids[0]}_image')
+                        # generated_json_path = f'/home/ncl/ADD_sy/inference/sg_inference/results/to_send/{image_ids[0]}_image.json'
+                        # graph_obj = GraphHandler(generated_json_path)
+                        # graph_obj.generate_SG(rank=20)
+                        # graph_drawer = GraphDrawer(graph_obj)
+                        # graph_drawer.draw_and_save(figure_name=f'{image_ids[0]}_sg')
+                    if live:
                         sg = cv2.imread(
                             f'/home/ncl/ADD_sy/inference/sg_inference/visualize/sg_result/{image_ids[0]}_sg.png')
                         cv2.imshow('scene_graph', sg)
@@ -1158,8 +1189,8 @@ class SceneGraphGeneration:
         #     cv2.imwrite()
 
 def build_model(cfg, arguments, local_rank, distributed):
-
-    return OntoSceneGraphGeneration(cfg, arguments, local_rank, distributed)
+    return SceneGraphGeneration(cfg, arguments, local_rank, distributed)
+    # return OntoSceneGraphGeneration(cfg, arguments, local_rank, distributed)
 
 # def build_model(cfg, arguments, local_rank, distributed):
 #     return SceneGraphGeneration(cfg, arguments, local_rank, distributed)

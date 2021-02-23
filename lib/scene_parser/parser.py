@@ -133,13 +133,14 @@ class SceneParser(GeneralizedRCNN):
                     relation_features = x
                 # During training, self.box() will return the unaltered proposals as "detections"
                 # this makes the API consistent during training and testing
-
-                # detection_pairs
                 # breakpoint()
+                # 여기서 detection_paris 가 relation_heads.py 의 return result로 받음. x_pairs, rel_heads_loss = empty
+
                 x_pairs, detection_pairs, rel_heads_loss = self.rel_heads(relation_features, detections, targets)
                 scene_parser_losses.update(rel_heads_loss)
 
                 x = (x, x_pairs)
+                # detections 는 bbox, detection_pairs는 pair
                 result = (detections, detection_pairs)
         else:
             # RPN-only models don't have roi_heads

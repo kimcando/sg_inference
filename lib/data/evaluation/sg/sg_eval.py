@@ -17,6 +17,7 @@ def do_sg_evaluation(dataset, predictions, predictions_pred, output_folder, imag
 
     for mode in modes:
         result_dict[mode + '_recall'] = {20:[], 50:[], 100:[]}
+        # predictions_pred bbox로
         for image_id, (prediction, prediction_pred) in enumerate(zip(predictions, predictions_pred)):
             img_info = dataset.get_img_info(image_id)
             image_width = img_info["width"]
@@ -31,7 +32,8 @@ def do_sg_evaluation(dataset, predictions, predictions_pred, output_folder, imag
             }
 
             # import pdb; pdb.set_trace()
-            breakpoint()
+            # breakpoint()
+            # predictions realize
             prediction = prediction.resize((image_width, image_height))
             obj_scores = prediction.get_field("scores").detach().numpy()
             all_rels = prediction_pred.get_field("idx_pairs").detach().numpy()
@@ -47,6 +49,7 @@ def do_sg_evaluation(dataset, predictions, predictions_pred, output_folder, imag
             sorted_inds = np.argsort(-scores)
             sorted_inds = sorted_inds[scores[sorted_inds] > 0] #[:100]
             # breakpoint()
+            # 저장하려면.. 이걸 저장해도 되겠다..
             pred_entry = {
                 'pred_boxes': prediction.bbox.numpy(),
                 'pred_classes': prediction.get_field("labels").detach().numpy(),
@@ -54,7 +57,9 @@ def do_sg_evaluation(dataset, predictions, predictions_pred, output_folder, imag
                 'pred_rel_inds': all_rels[sorted_inds],
                 'rel_scores': fp_pred[sorted_inds],
             }
-
+            torch.save(pred_entry,
+                       os.path.join('/home/ncl/ADD_sy/inference/sg_inference/results/output',
+                                    f'{image_ids[0]}_pred_entry.pth'))
             evaluator[mode].evaluate_scene_graph_entry(
                 gt_entry,
                 pred_entry,
@@ -124,7 +129,8 @@ def evaluate(gt_classes, gt_boxes, gt_rels,
 
     predicate_preds = rel_scores.detach().numpy()
 
-    # no bg
+    # no bg < background 빼고?
+    # breakpoint()
     predicate_preds = predicate_preds[:, 1:]
     predicates = np.argmax(predicate_preds, 1).ravel() + 1
     predicate_scores = predicate_preds.max(axis=1).ravel()
@@ -233,6 +239,7 @@ def _triplet(predicates, relations, classes, boxes,
     triplet_dict = dict()
     triplet_dict['sub'] = []
     triplet_dict['obj'] = []
+    # breakpoint()# 여기서 바뀌는 듯
     for i in range(num_relations):
         triplets[i, 1] = predicates[i]
         sub_i, obj_i = relations[i,:2]

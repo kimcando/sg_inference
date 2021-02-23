@@ -65,21 +65,23 @@ class GraphHandler:
             print(f'number of nodes in this graph: {G.nodes()}')
             print(f'number of edges in this graph: {G.edges()}')
 
-    def generate_SG(self, recall=1):
-        obj = self.add_sub_obj(rank=recall)
-        rel, self.edge_label = self.add_relation(obj, rank=recall)
+    def generate_SG(self, rank=1):
+
+        obj = self.add_sub_obj(rank=rank)
+        rel, self.edge_label = self.add_relation(obj, rank=rank)
         self.print_graph_info()
 
     def add_sub_obj(self, rank=1):
 
         #  make subject/object dictionary
         obj = {i:[] for i in range(rank)}
+        import pdb; pdb.set_trace()
         for i in range(rank):
             # import pdb; pdb.set_trace()
             # breakpoint()
             obj[i].append(self.json_data['triplet'][i]['subject'])
             obj[i].append(self.json_data['triplet'][i]['object'])
-
+            print(i)
         #  add // can be done above but just for separting
         for k, v_list in obj.items():
             for v in v_list:
@@ -142,7 +144,7 @@ class JsonTranslator(object):
         self.idx_label = gt_data_obj.get_idx_label
         self.idx_predicate = gt_data_obj.get_idx_predicate
 
-    def make_json(self, data_file, img_name='test',recall=1, FileName=False):
+    def make_json(self, data_file, img_name='test',rank=1, FileName=False):
         with open(data_file) as f:
             data = json.load(f)
 
@@ -156,42 +158,32 @@ class JsonTranslator(object):
             new_data['FileName'] = FileName
         else:
             new_data['FileName'] = data['FileName']
-        new_data['recall'] = recall
+        new_data['rank'] = rank
 
         # bbox, triplet append
-
-        for i in range(recall):
-            cls_in_trip = [0, -1]
-            triple = dict()
+        # bbox --> append all the detected boxes
+        for i in range(len(data['bbox'])):
             bbox = dict()
-            # breakpoint()
-            bbox['id'] = data['triplet'][i][0]
+            bbox['id'] = i
             bbox['x'] = data['bbox'][i][0]
             bbox['y'] = data['bbox'][i][1]
             bbox['x2'] = data['bbox'][i][2]
             bbox['y2'] = data['bbox'][i][3]
             #TODO
-            # bbox['obj_name'] = self.idx_label[data['triplet'][i][0]]
+            # bbox['obj_name'] = self.idx_label[data['obj_name'][i][0]]
+            # bbox['score'] = self.idx_label[data['score'][i][0]]
             new_data['bbox'].append(bbox)
 
-            # for j in range(2):
-            #     bbox = dict()
-            #     import pdb; pdb.set_trace()
-            #     # TODO
-            #     bbox['id'] = data['triplet'][i][cls_in_trip[j]]
-            #     b = data['bbox'][i][j:j + 4]
-            #     bbox['x'] = b[0]
-            #     bbox['y'] = b[1]
-            #     bbox['x2'] = b[2]
-            #     bbox['y2'] = b[3]
-            #     bbox['obj_name'] = self.idx_label[data['triplet'][i][cls_in_trip[j]]]
-            #     new_data['bbox'].append(bbox)
-
+        # triplet --> append top rank
+        # triplet index 중 sub, obj가  obj bbox 가르키도록 수정돼야할듯
+        for i in range(rank):
             # GT translation requires
+            triple = dict()
             triple['subject'] = self.idx_label[data['triplet'][i][0]]
             triple['predicate'] = self.idx_predicate[data['triplet'][i][1]]
             triple['object'] = self.idx_label[data['triplet'][i][2]]
             new_data['triplet'].append(triple)
+
 
         with open('/home/ncl/ADD_sy/inference/sg_inference/results/to_send/'+img_name+'.json', 'w') as outfile:
             json.dump(new_data, outfile)
@@ -223,14 +215,15 @@ if __name__=='__main__':
     result_data_path = '/home/ncl/ADD_sy/inference/sg_inference/results/to_send/0_merged.json'
     gt_data_obj = GTDictHandler(gt_data_path)
     jsonMaker = JsonTranslator(gt_data_obj)
-    jsonMaker.make_json(result_data_path,img_name='0_image',FileName='0_image')
+    jsonMaker.make_json(result_data_path,img_name='0_test_image',
+                        rank=20,FileName='0_test_image')
 
     # server will send generated_json_path
-    generated_json_path = '/home/ncl/ADD_sy/inference/sg_inference/results/to_send/0_image.json'
+    generated_json_path = '/home/ncl/ADD_sy/inference/sg_inference/results/to_send/0_test_image.json'
     graph_obj = GraphHandler(generated_json_path)
-    graph_obj.generate_SG(recall=1)
+    graph_obj.generate_SG(rank=20)
     graph_drawer = GraphDrawer(graph_obj)
-    graph_drawer.draw_and_save(figure_name='0_sg')
+    graph_drawer.draw_and_save(figure_name='test_sg')
 
 
 

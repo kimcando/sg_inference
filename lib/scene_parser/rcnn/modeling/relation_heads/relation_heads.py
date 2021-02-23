@@ -152,9 +152,14 @@ class ROIRelationHead(torch.nn.Module):
             else:
                 proposal_pairs = self.loss_evaluator.subsample(proposals, targets)
         else:
+            # breakpoint()
+            # proposal
             with torch.no_grad():
                 if self.cfg.MODEL.USE_RELPN:
                     proposal_pairs, relnesses = self.relpn(proposals)
+                    #(Pdb) p relnesses[0].shape
+                    #torch.Size([256])
+
                 else:
                     proposal_pairs = self.loss_evaluator.subsample(proposals)
 
@@ -162,10 +167,20 @@ class ROIRelationHead(torch.nn.Module):
             """
             if use frequency prior, we directly use the statistics
             """
+            # 여기로 왔어
             x = None
             obj_class_logits = None
+            # obj_labels.shape torch.Size([39])
             _, obj_labels, im_inds = _get_tensor_from_boxlist(proposals, 'labels')
+            # (Pdb)
+            # p
+            # np.unique(proposal_idx_pairs.detach().cpu())
+            # array([0, 1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17,
+            #        19, 20, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 36, 37,
+            #        38]
+            # proposal_idx_pairs --> bbox
             _, proposal_idx_pairs, im_inds_pairs = _get_tensor_from_boxlist(proposal_pairs, 'idx_pairs')
+            # 왜 있는진 모르겠음
             rel_inds = _get_rel_inds(im_inds, im_inds_pairs, proposal_idx_pairs)
             pred_class_logits = self.freq_bias.index_with_labels(
                 torch.stack((obj_labels[rel_inds[:, 0]],obj_labels[rel_inds[:, 1]],), 1))
@@ -203,7 +218,7 @@ class ROIRelationHead(torch.nn.Module):
             # if self.cfg.MODEL.USE_RELPN:
             #     for res, relness in zip(result, relnesses):
             #         res.add_field("scores", res.get_field("scores") * relness.view(-1, 1))
-
+            # result 도 BBOX로
             return x, result, {}
 
         loss_obj_classifier = 0

@@ -65,9 +65,9 @@ class GraphHandler:
             print(f'number of nodes in this graph: {G.nodes()}')
             print(f'number of edges in this graph: {G.edges()}')
 
-    def generate_SG(self, recall=20):
-        obj = self.add_sub_obj(rank=recall)
-        rel, self.edge_label = self.add_relation(obj, rank=recall)
+    def generate_SG(self, rank=20):
+        obj = self.add_sub_obj(rank=rank)
+        rel, self.edge_label = self.add_relation(obj, rank=rank)
         self.print_graph_info()
 
     def add_sub_obj(self, rank=20):
@@ -104,68 +104,6 @@ class GraphHandler:
                 edge_label[(v_list[0], v_list[-1])] = rel[k][0]
         return rel, edge_label
 
-# original version
-# class GraphHandler:
-#     def __init__(self, gt_data_obj):
-#         self.G = self.new_graph()
-#         self.gt_data_obj = gt_data_obj
-#         self.idx_label = gt_data_obj.get_idx_label
-#         self.idx_predicate = gt_data_obj.get_idx_predicate
-#
-#     def new_graph(self):
-#         G = nx.Graph()
-#         return G
-#
-#     def print_graph_info(self, G=None):
-#         if G is None:
-#             print(f'number of nodes in this graph: {self.G.nodes()}')
-#             print(f'number of edges in this graph: {self.G.edges()}')
-#             print(f'edge label in this graph:{self.edge_label}')
-#         else:
-#             print(f'number of nodes in this graph: {G.nodes()}')
-#             print(f'number of edges in this graph: {G.edges()}')
-#
-#     def generate_SG(self, triplet):
-#         obj = self.add_sub_obj(triplet)
-#         rel, self.edge_label = self.add_relation(triplet, obj)
-#         self.print_graph_info()
-#
-#     def add_sub_obj(self, triplet, rank=20):
-#         """
-#         total_obj: dictionary of list
-#         """
-#         total_len = len(triplet['data_img']['triplet'][:rank])
-#         #  make subject/object dictionary
-#         obj = {i:[] for i in range(total_len)}
-#         for i in range(total_len):
-#             obj[i].append(triplet['data_img']['triplet'][i][0])
-#             obj[i].append(triplet['data_img']['triplet'][i][-1])
-#
-#         #  add // can be done above but just for separting
-#         for k, v_list in obj.items():
-#             for v in v_list:
-#                 # pdb.set_trace()
-#                 self.G.add_node(self.idx_label[v])
-#         return obj
-#
-#     def add_relation(self,triplet, obj, rank=20,show_edge_name=True):
-#         """
-#         This is done in only triplet case
-#         total_rel: dictionary of list
-#         """
-#         total_len = len(triplet['data_img']['triplet'][:rank])
-#         #  make relational dictionary
-#         rel = {i: [] for i in range(total_len)}
-#         edge_label = dict()
-#         for i in range(total_len):
-#             rel[i].append(triplet['data_img']['triplet'][i][1]) # position check requires
-#
-#         #  add // can be done above but just for separting
-#         for k, v_list in obj.items():
-#             self.G.add_edge(self.idx_label[v_list[0]], self.idx_label[v_list[-1]])
-#             if show_edge_name:
-#                 edge_label[(self.idx_label[v_list[0]], self.idx_label[v_list[-1]])] = self.idx_predicate[rel[k][0]]
-#         return rel, edge_label
 
 class GraphDrawer:
     def __init__(self, G_obj):
@@ -206,7 +144,7 @@ class JsonTranslator(object):
         self.idx_label = gt_data_obj.get_idx_label
         self.idx_predicate = gt_data_obj.get_idx_predicate
 
-    def make_json(self, data_file, img_name='json_img_0',recall=20, FileName=False):
+    def make_json(self, data_file, img_name='json_img_0',rank=20, FileName=False):
         with open(data_file) as f:
             data = json.load(f)
 
@@ -220,10 +158,10 @@ class JsonTranslator(object):
             new_data['FileName'] = FileName
         else:
             new_data['FileName'] = data['FileName']
-        new_data['recall'] = recall
+        new_data['recall'] = rank
 
         # bbox, triplet append
-        for i in range(recall):
+        for i in range(rank):
             cls_in_trip = [0, -1]
             triple = dict()
             for j in range(2):

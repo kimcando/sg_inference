@@ -148,6 +148,7 @@ class RelPN(nn.Module):
             enumerate(zip(proposals, sampled_pos_inds, sampled_neg_inds)):
             obj_logits = proposals_per_image.get_field('logits')
             obj_bboxes = proposals_per_image.bbox
+
             relness = self.relationshipness(obj_logits, obj_bboxes, proposals_per_image.size)
 
             # nondiag = (1 - torch.eye(obj_logits.shape[0]).to(relness.device)).view(-1)
@@ -211,6 +212,8 @@ class RelPN(nn.Module):
             proposals (list[BoxList])
         """
         proposal_pairs = []
+        # breakpoint()
+        #_fullsample_test
         for i, proposals_per_image in enumerate(proposals):
             box_subj = proposals_per_image.bbox
             box_obj = proposals_per_image.bbox
@@ -242,7 +245,10 @@ class RelPN(nn.Module):
         """
         perform relpn based sampling during testing
         """
+        # breakpoint()
         proposals[0] = proposals[0]
+        # 여기랑
+        # proposal_pairs 1482 > nms?
         proposal_pairs = self._fullsample_test(proposals)
         proposal_pairs = list(proposal_pairs)
 
@@ -250,6 +256,7 @@ class RelPN(nn.Module):
         for img_idx, proposals_per_image in enumerate(proposals):
             obj_logits = proposals_per_image.get_field('logits')
             obj_bboxes = proposals_per_image.bbox
+            # breakpoint()
             relness = self.relationshipness(obj_logits, obj_bboxes, proposals_per_image.size)
             keep_idx = (1 - torch.eye(obj_logits.shape[0]).to(relness.device)).view(-1).nonzero().view(-1)
             if self.cfg.MODEL.ROI_RELATION_HEAD.FILTER_NON_OVERLAP:
@@ -282,12 +289,24 @@ class RelPN(nn.Module):
             # img_sampled_inds = order[sample_ids]
             # relness = relness_sorted[sample_ids]
 
+            # order = 원래 pair에서 index 만큼 된거
             img_sampled_inds = order[:self.cfg.MODEL.ROI_RELATION_HEAD.BATCH_SIZE_PER_IMAGE].view(-1)
+            # relness order 별로 넣었고
             relness = relness_sorted[:self.cfg.MODEL.ROI_RELATION_HEAD.BATCH_SIZE_PER_IMAGE].view(-1)
 
             proposal_pairs_per_image = proposal_pairs[img_idx][img_sampled_inds]
             proposal_pairs[img_idx] = proposal_pairs_per_image
             relnesses.append(relness)
+        # (Pdb)
+        # p
+        # proposal_pairs[0].get_field('idx_pairs')
+        # tensor([[0, 1],
+        #         [0, 2],
+        #         [0, 3],
+        #         ...,
+        #         [38, 35],
+        #         [38, 36],
+        #         [38, 37]], device='cuda:0')
 
         self._proposal_pairs = proposal_pairs
 
