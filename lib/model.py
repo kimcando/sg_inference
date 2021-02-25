@@ -23,6 +23,7 @@ from PIL import Image
 import numpy as np
 from torchvision.utils import save_image
 
+
 class OntoSceneGraphGeneration:
     """
     Scene graph generation
@@ -643,7 +644,7 @@ class SceneGraphGeneration:
         # print(type(imgs)) # <class 'lib.scene_parser.rcnn.structures.image_list.ImageList'>
         # print('length of predictions',len(predictions))
         for i, prediction in enumerate(predictions):
-            import pdb; pdb.set_trace()
+            # import pdb; pdb.set_trace()
             top_prediction = select_top_predictions(prediction)
             # print('top predcition',len(top_prediction))
             img = imgs.tensors[i].permute(1, 2, 0).contiguous().cpu().numpy() + np.array(self.cfg.INPUT.PIXEL_MEAN).reshape(1, 1, 3)
@@ -1033,6 +1034,7 @@ class SceneGraphGeneration:
                                     output_folder=output_folder,
                                     image_ids = image_ids,
                                     **extra_args)
+                    demo_merge_json(image_ids)
                     if visualize:
                         # import pdb; pdb.set_trace()
                         demo_merge_json_org(image_ids)
