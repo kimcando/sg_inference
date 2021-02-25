@@ -79,8 +79,8 @@ class GraphHandlerDemo_v2:
             self.json_data['triplet'][i]['subject'] = self.idx_label[int(self.json_data['triplet'][i]['subject'][0])]+'_'+self.json_data['triplet'][i]['subject'][1]
             self.json_data['triplet'][i]['predicate'] = self.idx_predicate[int(self.json_data['triplet'][i]['predicate'])]
             self.json_data['triplet'][i]['object'] = self.idx_label[int(self.json_data['triplet'][i]['object'][0])]+'_'+self.json_data['triplet'][i]['object'][1]
-        with open(f'/home/ncl/ADD_sy/inference/sg_inference/results/to_send/{image_ids[0]}_send.json', 'w') as f:
-            json.dump(self.json_data, f)
+        # with open(f'/home/ncl/ADD_sy/inference/sg_inference/results/to_send/{image_ids[0]}_send.json', 'w') as f:
+        #     json.dump(self.json_data, f)
             # new_data['triplet'].append(triple)
 
     def save_triplet(self, rank, image_ids):
@@ -128,7 +128,7 @@ class GraphHandlerDemo_v2:
             # self.json_data['triplet'][i] = [str(class index), str(bbox_idx)]
             obj[i].append(self.json_data['triplet'][i]['subject'])
             obj[i].append(self.json_data['triplet'][i]['object'])
-            print(i)
+
         #  add // can be done above but just for separting
         for k, v_list in obj.items():
             for v in v_list:
@@ -177,8 +177,8 @@ class GraphHandlerDemo:
             self.json_data['triplet'][i]['subject'] = self.idx_label[int(self.json_data['triplet'][i]['subject'][0])]+'_'+self.json_data['triplet'][i]['subject'][1]
             self.json_data['triplet'][i]['predicate'] = self.idx_predicate[int(self.json_data['triplet'][i]['predicate'])]
             self.json_data['triplet'][i]['object'] = self.idx_label[int(self.json_data['triplet'][i]['object'][0])]+'_'+self.json_data['triplet'][i]['object'][1]
-        with open(f'/home/ncl/ADD_sy/inference/sg_inference/results/to_send/{image_ids[0]}_send.json', 'w') as f:
-            json.dump(self.json_data, f)
+        # with open(f'/home/ncl/ADD_sy/inference/sg_inference/results/to_send/{image_ids[0]}_send.json', 'w') as f:
+        #     json.dump(self.json_data, f)
             # new_data['triplet'].append(triple)
 
     def save_triplet(self, rank, image_ids):
@@ -226,7 +226,7 @@ class GraphHandlerDemo:
             # self.json_data['triplet'][i] = [str(class index), str(bbox_idx)]
             obj[i].append(self.json_data['triplet'][i]['subject'])
             obj[i].append(self.json_data['triplet'][i]['object'])
-            print(i)
+
         #  add // can be done above but just for separting
         for k, v_list in obj.items():
             for v in v_list:
@@ -288,7 +288,7 @@ class GraphHandler:
             # self.json_data['triplet'][i] = [str(class index), str(bbox_idx)]
             obj[i].append(self.json_data['triplet'][i]['subject'])
             obj[i].append(self.json_data['triplet'][i]['object'])
-            print(i)
+            # print(i)
         #  add // can be done above but just for separting
         for k, v_list in obj.items():
             for v in v_list:

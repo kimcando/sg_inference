@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 from .evaluator import BasicSceneGraphEvaluator
-from .save_json import save_triplet, save_triplet_scores, save_cls_scores
+
 import os
 
 def do_sg_evaluation(dataset, predictions, predictions_pred, output_folder, image_ids,logger):
@@ -200,24 +200,12 @@ def evaluate(gt_classes, gt_boxes, gt_rels,
                                   pred_triplet_boxes[keep_inds,:],
                                   iou_thresh)
         num_gt = gt_triplets.shape[0]
-        # torch.save(gt_triplet_boxes, os.path.join('/home/ncl/ADD/sg_inference/graph_rcnn/graph-rcnn.pytorch-master/results','test.pth'))
-        # save_value(k, gt_triplets,
-        #             pred_triplets[keep_inds,:],
-        #             gt_triplet_boxes,
-        #             pred_triplet_boxes[keep_inds,:],
-        #             iou_thresh)
-        # save_value(pred_triplet_boxes[keep_inds, :],
-        #            k,
-        #            pred_triplets[keep_inds, :],
-        #            )
-        result_dict[mode + '_recall'][k].append(recall / num_gt)
-        # result_dict[mode + '_triplets'][k].append(triplets_valid)
 
-    # for visualization
-    # breakpoint()
-    torch.save(pred_triplets[sorted_inds, :], os.path.join('/home/ncl/ADD_sy/inference/sg_inference/results/triplet', f'{image_ids[0]}_pred_triplets_sorted.pth'))
+        result_dict[mode + '_recall'][k].append(recall / num_gt)
+
+    torch.save(pred_triplets[sorted_inds, :], os.path.join('/home/ncl/ADD_sy/inference/sg_inference/results/output', f'{image_ids[0]}_pred_triplets_sorted.pth'))
     torch.save(pred_triplet_boxes[sorted_inds, :],
-               os.path.join('/home/ncl/ADD_sy/inference/sg_inference/results/triplet', f'{image_ids[0]}_pred_boxes_sorted.pth'))
+               os.path.join('/home/ncl/ADD_sy/inference/sg_inference/results/output', f'{image_ids[0]}_pred_boxes_sorted.pth'))
     return pred_triplets[sorted_inds, :], pred_triplet_boxes[sorted_inds, :]
 
 def _triplet(predicates, relations, classes, boxes,

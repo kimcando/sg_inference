@@ -18,10 +18,10 @@ from .utils.box import bbox_overlaps
 from ontology_interface.json_handler import demo_merge_json, demo_merge_json_org
 from ontology_interface.getOntoVis_demo import GTDictHandler, GraphHandlerDemo, GraphDrawer
 import pdb
-from glob import glob
+
 from PIL import Image
 import numpy as np
-from torchvision.utils import save_image
+
 
 
 class OntoSceneGraphGeneration:
@@ -55,8 +55,7 @@ class OntoSceneGraphGeneration:
 
         # build scene graph generation model
         self.scene_parser = build_scene_parser(cfg); self.scene_parser.to(self.device)
-        # print(self.scene_parser)
-        # sys.exit(1)
+
         self.sp_optimizer, self.sp_scheduler, self.sp_checkpointer, self.extra_checkpoint_data = \
             build_scene_parser_optimizer(cfg, self.scene_parser, local_rank=local_rank, distributed=distributed)
 
@@ -148,15 +147,14 @@ class OntoSceneGraphGeneration:
                 os.mkdir(visualize_folder+'/'+raw_folder)
             if not os.path.exists(visualize_folder + '/' + bbox_folder):
                 os.mkdir(visualize_folder + '/' + bbox_folder)
-        # print(type(imgs)) # <class 'lib.scene_parser.rcnn.structures.image_list.ImageList'>
-        # print('length of predictions',len(predictions))
+
         for i, prediction in enumerate(predictions):
             top_prediction = select_top_predictions(prediction)
-            # print('top predcition',len(top_prediction))
+
             # TODO
             img = imgs.permute(1, 2, 0).contiguous().cpu().numpy() # + np.array(self.cfg.INPUT.PIXEL_MEAN).reshape(1, 1, 3)
             result = img.copy()
-            # import pdb; pdb.set_trace()
+
             if live:
                 # cv2.imwrite(
                 #     os.path.join(visualize_folder + '/' + raw_folder, "raw_detection_{}.jpg".format(img_ids[i])),
@@ -192,22 +190,9 @@ class OntoSceneGraphGeneration:
                 # cv2.imwrite(os.path.join(visualize_folder + '/' + bbox_folder, "bbox_detection_{}.jpg".format(img_ids[i])), result)
                 im = Image.fromarray(result.astype(np.uint8))
                 im.save(f'{visualize_folder}/{bbox_folder}/bbox_detection_{img_ids[i]}.jpg')
-                # im.save(visualize_folder + '/' + bbox_folder, "bbox_detection_{}.jpg".format(img_ids[i]))
 
-    # def load_test_data(self, img_dir, test_save_img=False):
-    #
-    #     img_list = glob(f'{img_dir}/*')
-    #     # for img_file in img_list:
-    #     img_pil = Image.open(img_list[0])
-    #     img_pil = np.array(img_pil).transpose(2, 0, 1)
-    #     # img = ToTensor()(img_pil).unsqueeze(0) # ToTensor 하면 normalize 도 자동으로 됨
-    #     img = torch.from_numpy(img_pil).unsqueeze(0).float()
-    #     file_name = img_dir.split('/')[-1].split('.')[0]
-    #     if test_save_img:
-    #         save_image(img_dir)
-    #     return img, file_name
 
-    def test(self, data_loader, test_single=False,timer=None, visualize=False, live=False, output_folder="results/"):
+    def test(self, data_loader, timer=None, visualize=False, live=False, output_folder="results/"):
         """
         main body for testing scene graph generation model
         """
@@ -224,203 +209,108 @@ class OntoSceneGraphGeneration:
         total_timer.tic()
         reg_recalls = []
 
-        # imgs = imgs.to(self.device)
-
         # graph handler added
         gt_data_path = '/home/ncl/ADD_sy/inference/sg_inference/ontology_interface/gt_data/VG_SGG_dicts.json'
         gt_data_obj = GTDictHandler(gt_data_path)
 
-        if test_single:
-            img_dir = "/home/ncl/ADD_sy/inference/sg_inference/data/"
-            imgs, file_name = self.load_test_data(img_dir)
-            breakpoint()
+        for i, data in enumerate(data_loader, 0):
+            logger.info("inference on batch {}/{}...".format(i, len(self.data_loader_test)))
+
+            imgs, _ = data
             imgs = imgs.to(self.device)
-            image_ids = (122,)
-            output = self.scene_parser(imgs)
+            # TODO
+            image_ids = (i + 1000000,)
 
-            if self.cfg.MODEL.RELATION_ON:
-                output, output_pred = output
-                output_pred = [o.to(cpu_device) for o in output_pred]
+            with torch.no_grad():
+                if timer:
+                    timer.tic()
 
-            if timer:
-                torch.cuda.synchronize()
-                timer.toc()
-            output = [o.to(cpu_device) for o in output]
+                output = self.scene_parser(imgs)
 
-            if visualize:
-                self.visualize_detection(self.data_loader_test.dataset, image_ids, imgs.squeeze(0), output, live=live)
-            # CHECK
-            # breakpoint()
-            results_dict.update(
-                {img_id: result for img_id, result in zip(image_ids, output)}
-            )
-            # targets_dict.update(
-            #     {img_id: target for img_id, target in zip(image_ids, targets)}
-            # )
-            # breakpoint()
-            if self.cfg.MODEL.RELATION_ON:
-                results_pred_dict.update(
-                    {img_id: result for img_id, result in zip(image_ids, output_pred)}
+                if self.cfg.MODEL.RELATION_ON:
+                    output, output_pred = output
+                    output_pred = [o.to(cpu_device) for o in output_pred]
+
+                torch.save(output,
+                           os.path.join('/home/ncl/ADD_sy/inference/sg_inference/results/output',
+                                        f'{image_ids[0]}_output.pth'))
+                torch.save(output_pred,
+                           os.path.join('/home/ncl/ADD_sy/inference/sg_inference/results/output',
+                                        f'{image_ids[0]}_output_pred.pth'))
+
+                if timer:
+                    torch.cuda.synchronize()
+                    timer.toc()
+                output = [o.to(cpu_device) for o in output]
+
+                # if visualize:
+                #     self.visualize_detection(self.data_loader_test.dataset, image_ids, imgs.squeeze(0), output, live=live)
+                # CHECK
+                # breakpoint()
+                results_dict.update(
+                    {img_id: result for img_id, result in zip(image_ids, output)}
                 )
+                # targets_dict.update(
+                #     {img_id: target for img_id, target in zip(image_ids, targets)}
+                # )
+                # breakpoint()
+                if self.cfg.MODEL.RELATION_ON:
+                    results_pred_dict.update(
+                        {img_id: result for img_id, result in zip(image_ids, output_pred)}
+                    )
 
-            predictions = self._accumulate_predictions_from_multiple_gpus(results_dict)
+                predictions = self._accumulate_predictions_from_multiple_gpus(results_dict)
 
-            # breakpoint()
-            if self.cfg.MODEL.RELATION_ON:
-                predictions_pred = self._accumulate_predictions_from_multiple_gpus(results_pred_dict)
-            if not is_main_process():
-                return
+                # breakpoint()
+                if self.cfg.MODEL.RELATION_ON:
+                    predictions_pred = self._accumulate_predictions_from_multiple_gpus(results_pred_dict)
+                if not is_main_process():
+                    return
 
-            extra_args = dict(
-                box_only=False if self.cfg.MODEL.RETINANET_ON else self.cfg.MODEL.RPN_ONLY,
-                iou_types=("bbox",),
-                expected_results=self.cfg.TEST.EXPECTED_RESULTS,
-                expected_results_sigma_tol=self.cfg.TEST.EXPECTED_RESULTS_SIGMA_TOL,
-            )
-            eval_det_results = evaluate(dataset=self.data_loader_test.dataset,
-                                        predictions=predictions,
-                                        output_folder=output_folder,
-                                        image_ids=image_ids,
-                                        **extra_args)
-            # breakpoint()
-            if self.cfg.MODEL.RELATION_ON:
-                evaluate_sg(dataset=self.data_loader_test.dataset,
-                            predictions=predictions,
-                            predictions_pred=predictions_pred,
-                            output_folder=output_folder,
-                            image_ids=image_ids,
-                            **extra_args)
-                if visualize:
-                    # import pdb; pdb.set_trace()
-                    # breakpoint()
+                extra_args = dict(
+                    box_only=False if self.cfg.MODEL.RETINANET_ON else self.cfg.MODEL.RPN_ONLY,
+                    iou_types=("bbox",),
+                    expected_results=self.cfg.TEST.EXPECTED_RESULTS,
+                    expected_results_sigma_tol=self.cfg.TEST.EXPECTED_RESULTS_SIGMA_TOL,
+                )
+                # in real inference, it doensn't require
+                # eval_det_results = evaluate(dataset=self.data_loader_test.dataset,
+                #                             predictions=predictions,
+                #                             output_folder=output_folder,
+                #                             image_ids=image_ids,
+                #                             **extra_args)
+                # breakpoint()
+                if self.cfg.MODEL.RELATION_ON:
+                    evaluate_sg(dataset=self.data_loader_test.dataset,
+                                predictions=predictions,
+                                predictions_pred=predictions_pred,
+                                output_folder=output_folder,
+                                image_ids=image_ids,
+                                **extra_args)
+
+                    # make json for GraphViz
                     demo_merge_json(image_ids)
-                    # jsonMaker = JsonTranslator(gt_data_obj)
-                    result_data_path = f'/home/ncl/ADD_sy/inference/sg_inference/results/to_send/{image_ids[0]}_merged.json'
-                    # jsonMaker.make_json(result_data_path, img_name=f'{image_ids[0]}_image', recall=10,
-                    #                     FileName=f'{image_ids[0]}_image')
-                    # generated_json_path = f'/home/ncl/ADD_sy/inference/sg_inference/results/to_send/{image_ids[0]}_image.json'
-                    graph_obj = GraphHandlerDemo(result_data_path, gt_data_obj)
-                    graph_obj.get_name(rank=20)
-                    graph_obj.generate_SG(recall=20)
-                    graph_drawer = GraphDrawer(graph_obj)
-                    print('done')
-                    graph_drawer.draw_and_save(figure_name=f'{image_ids[0]}_sg')
-                    # graph_drawer.draw_and_save(figure_name=f'{122}_sg')
-                if live:
-                    sg = cv2.imread(
-                        f'/home/ncl/ADD_sy/inference/sg_inference/visualize/sg_result/{image_ids[0]}_sg.png')
-                    cv2.imshow('scene_graph', sg)
-                    cv2.waitKey(10)
+                    if visualize:
+                        # demo_merge_json_org makes {image_idx[0]}_merged.json makes json for internal meeting prototype style json
+                        demo_merge_json_org(image_ids)
+                        result_data_path = f'/home/ncl/ADD_sy/inference/sg_inference/results/to_send/{image_ids[0]}_merged.json'
 
-            print(f'{image_ids[0]} done')
+                        graph_obj = GraphHandlerDemo(result_data_path, gt_data_obj)
+                        graph_obj.get_name(rank=20, image_ids=image_ids)
+                        graph_obj.generate_SG(rank=20)
+                        graph_drawer = GraphDrawer(graph_obj)
 
-        else:
-            for i, data in enumerate(data_loader, 0):
-                logger.info("inference on batch {}/{}...".format(i, len(self.data_loader_test)))
+                        graph_drawer.draw_and_save(figure_name=f'{image_ids[0]}_sg')
+                        self.visualize_detection(self.data_loader_test.dataset, image_ids, imgs.squeeze(0), output,
+                                                 live=live)
 
-                imgs, _ = data
-                imgs = imgs.to(self.device)
-                idx = i+10000
-                image_ids = (i+1000000,)
+                    if live:
+                        sg = cv2.imread(
+                            f'/home/ncl/ADD_sy/inference/sg_inference/visualize/sg_result/{image_ids[0]}_sg.png')
+                        cv2.imshow('scene_graph', sg)
+                        cv2.waitKey(10)
 
-                with torch.no_grad():
-                    if timer:
-                        timer.tic()
-
-                    output = self.scene_parser(imgs)
-
-                    if self.cfg.MODEL.RELATION_ON:
-                        output, output_pred = output
-                        output_pred = [o.to(cpu_device) for o in output_pred]
-
-                    torch.save(output,
-                               os.path.join('/home/ncl/ADD_sy/inference/sg_inference/results/output',
-                                            f'{image_ids[0]}_output.pth'))
-                    torch.save(output_pred,
-                               os.path.join('/home/ncl/ADD_sy/inference/sg_inference/results/output',
-                                            f'{image_ids[0]}_output_pred.pth'))
-
-                    if timer:
-                        torch.cuda.synchronize()
-                        timer.toc()
-                    output = [o.to(cpu_device) for o in output]
-
-                    # if visualize:
-                    #     self.visualize_detection(self.data_loader_test.dataset, image_ids, imgs.squeeze(0), output, live=live)
-                    # CHECK
-                    # breakpoint()
-                    results_dict.update(
-                        {img_id: result for img_id, result in zip(image_ids, output)}
-                    )
-                    # targets_dict.update(
-                    #     {img_id: target for img_id, target in zip(image_ids, targets)}
-                    # )
-                    # breakpoint()
-                    if self.cfg.MODEL.RELATION_ON:
-                        results_pred_dict.update(
-                            {img_id: result for img_id, result in zip(image_ids, output_pred)}
-                        )
-
-                    predictions = self._accumulate_predictions_from_multiple_gpus(results_dict)
-
-                    # breakpoint()
-                    if self.cfg.MODEL.RELATION_ON:
-                        predictions_pred = self._accumulate_predictions_from_multiple_gpus(results_pred_dict)
-                    if not is_main_process():
-                        return
-
-                    extra_args = dict(
-                        box_only=False if self.cfg.MODEL.RETINANET_ON else self.cfg.MODEL.RPN_ONLY,
-                        iou_types=("bbox",),
-                        expected_results=self.cfg.TEST.EXPECTED_RESULTS,
-                        expected_results_sigma_tol=self.cfg.TEST.EXPECTED_RESULTS_SIGMA_TOL,
-                    )
-                    eval_det_results = evaluate(dataset=self.data_loader_test.dataset,
-                                                predictions=predictions,
-                                                output_folder=output_folder,
-                                                image_ids=image_ids,
-                                                **extra_args)
-                    # breakpoint()
-                    if self.cfg.MODEL.RELATION_ON:
-                        evaluate_sg(dataset=self.data_loader_test.dataset,
-                                    predictions=predictions,
-                                    predictions_pred=predictions_pred,
-                                    output_folder=output_folder,
-                                    image_ids=image_ids,
-                                    **extra_args)
-                        demo_merge_json(image_ids)
-                        if visualize:
-                            # import pdb; pdb.set_trace()
-                            demo_merge_json_org(image_ids)
-                            result_data_path = f'/home/ncl/ADD_sy/inference/sg_inference/results/to_send/{image_ids[0]}_merged.json'
-                            # jsonMaker.make_json(result_data_path, img_name=f'{image_ids[0]}_image', recall=10,
-                            #                     FileName=f'{image_ids[0]}_image')
-                            # generated_json_path = f'/home/ncl/ADD_sy/inference/sg_inference/results/to_send/{image_ids[0]}_image.json'
-                            graph_obj = GraphHandlerDemo(result_data_path, gt_data_obj)
-                            graph_obj.get_name(rank=20, image_ids=image_ids)
-                            graph_obj.generate_SG(rank=20)
-                            graph_drawer = GraphDrawer(graph_obj)
-                            print('done')
-                            graph_drawer.draw_and_save(figure_name=f'{image_ids[0]}_sg')
-                            self.visualize_detection(self.data_loader_test.dataset, image_ids, imgs.squeeze(0), output,
-                                                     live=live)
-                            # original
-                            # jsonMaker = JsonTranslator(gt_data_obj)
-                            # result_data_path = f'/home/ncl/ADD_sy/inference/sg_inference/results/to_send/{image_ids[0]}_merged.json'
-                            # jsonMaker.make_json(result_data_path, img_name=f'{image_ids[0]}_image',
-                            #                     FileName=f'{image_ids[0]}_image')
-                            # generated_json_path = f'/home/ncl/ADD_sy/inference/sg_inference/results/to_send/{image_ids[0]}_image.json'
-                            # graph_obj = GraphHandler(generated_json_path)
-                            # graph_obj.generate_SG(recall=5)
-                            # graph_drawer = GraphDrawer(graph_obj)
-                            # graph_drawer.draw_and_save(figure_name=f'{image_ids[0]}_sg')
-                        if live:
-                            sg = cv2.imread(
-                                f'/home/ncl/ADD_sy/inference/sg_inference/visualize/sg_result/{image_ids[0]}_sg.png')
-                            cv2.imshow('scene_graph', sg)
-                            cv2.waitKey(10)
-
-                    print(f'{image_ids[0]} done')
+                print(f'{image_ids[0]} done')
 
 
 class SceneGraphGeneration:
@@ -437,7 +327,6 @@ class SceneGraphGeneration:
 
         # build data loader
         self.data_loader_train = build_data_loader(cfg, split="train", is_distributed=distributed)
-        #TODO
         self.data_loader_test = build_data_loader(cfg, split="test", is_distributed=distributed)
 
         cfg.DATASET.IND_TO_OBJECT = self.data_loader_train.dataset.ind_to_classes
@@ -605,6 +494,7 @@ class SceneGraphGeneration:
         predictions = [predictions[i] for i in image_ids]
         return predictions
 
+
     def visualize_detection(self, dataset, img_ids, imgs, predictions,live=False,visualize_folder="visualize",
                             raw_folder = "raw",
                             bbox_folder="bbox"):
@@ -615,70 +505,23 @@ class SceneGraphGeneration:
                 os.mkdir(visualize_folder+'/'+raw_folder)
             if not os.path.exists(visualize_folder + '/' + bbox_folder):
                 os.mkdir(visualize_folder + '/' + bbox_folder)
-        # print(type(imgs)) # <class 'lib.scene_parser.rcnn.structures.image_list.ImageList'>
-        # print('length of predictions',len(predictions))
+
         for i, prediction in enumerate(predictions):
             top_prediction = select_top_predictions(prediction)
-            # print('top predcition',len(top_prediction))
-            img = imgs.permute(1, 2, 0).contiguous().cpu().numpy() # + np.array(self.cfg.INPUT.PIXEL_MEAN).reshape(1, 1, 3)
-            result = img.copy()
-            # import pdb; pdb.set_trace()
-            if live:
-                cv2.imwrite(
-                    os.path.join(visualize_folder + '/' + raw_folder, "raw_detection_{}.jpg".format(img_ids[i])),
-                    result)
-                img = cv2.imread(
-                    f'/home/ncl/ADD_sy/inference/sg_inference/visualize/raw/raw_detection_{img_ids[0]}.jpg')
-                cv2.imshow('raw_image', img)
-                cv2.waitKey(12)
-            else:
-                cv2.imwrite(os.path.join(visualize_folder + '/' + raw_folder, "raw_detection_{}.jpg".format(img_ids[i])),
-                            result)
-                # im = Image.fromarray(result)
-                # im.save('/home/ncl/ADD_sy/inference/sg_inference/visualize/'+'test.png')
-
-            result = overlay_boxes(result, top_prediction)
-            result = overlay_class_names(result, top_prediction, dataset.ind_to_classes)
-            if live:
-                cv2.imwrite(
-                    os.path.join(visualize_folder + '/' + bbox_folder, "bbox_detection_{}.jpg".format(img_ids[i])),
-                    result)
-                img2 = cv2.imread(
-                    f'/home/ncl/ADD_sy/inference/sg_inference/visualize/bbox/bbox_detection_{img_ids[0]}.jpg')
-                cv2.imshow('bounding_box_image', img2)
-                cv2.waitKey(12)
-            else:
-                cv2.imwrite(os.path.join(visualize_folder + '/' + bbox_folder, "bbox_detection_{}.jpg".format(img_ids[i])), result)
-                # im = Image.fromarray(result)
-                # im.save('/home/ncl/ADD_sy/inference/sg_inference/visualize/' + 'test2.png')
-
-    def visualize_detection_2020(self, dataset, img_ids, imgs, predictions,live=False,visualize_folder="visualize",
-                            raw_folder = "raw",
-                            bbox_folder="bbox"):
-        visualize_folder = "/home/ncl/ADD_sy/inference/sg_inference/visualize"
-        if not os.path.exists(visualize_folder):
-            os.mkdir(visualize_folder)
-            if not os.path.exists(visualize_folder+'/'+raw_folder):
-                os.mkdir(visualize_folder+'/'+raw_folder)
-            if not os.path.exists(visualize_folder + '/' + bbox_folder):
-                os.mkdir(visualize_folder + '/' + bbox_folder)
-        # print(type(imgs)) # <class 'lib.scene_parser.rcnn.structures.image_list.ImageList'>
-        # print('length of predictions',len(predictions))
-        for i, prediction in enumerate(predictions):
-            # import pdb; pdb.set_trace()
-            top_prediction = select_top_predictions(prediction)
-            # print('top predcition',len(top_prediction))
+            #TODO
             img = imgs.tensors[i].permute(1, 2, 0).contiguous().cpu().numpy() + np.array(self.cfg.INPUT.PIXEL_MEAN).reshape(1, 1, 3)
             result = img.copy()
-            # import pdb; pdb.set_trace()
+
             if live:
                 cv2.imwrite(
                     os.path.join(visualize_folder + '/' + raw_folder, "raw_detection_{}.jpg".format(img_ids[i])),
                     result)
+
                 img = cv2.imread(
                     f'/home/ncl/ADD_sy/inference/sg_inference/visualize/raw/raw_detection_{img_ids[0]}.jpg')
                 cv2.imshow('raw_image', img)
                 cv2.waitKey(20)
+         
             else:
                 cv2.imwrite(os.path.join(visualize_folder + '/' + raw_folder, "raw_detection_{}.jpg".format(img_ids[i])),
                             result)
@@ -696,233 +539,8 @@ class SceneGraphGeneration:
             else:
                 cv2.imwrite(os.path.join(visualize_folder + '/' + bbox_folder, "bbox_detection_{}.jpg".format(img_ids[i])), result)
 
-    def test_nono(self, data_loader, timer=None, visualize=False, live=False, output_folder="results/"):
-        """
-        main body for testing scene graph generation model
-        """
-        logger = logging.getLogger("scene_graph_generation.inference")
-        logger.info("Start evaluating")
-        self.scene_parser.eval()
-        targets_dict = {}
-        results_dict = {}
-        if self.cfg.MODEL.RELATION_ON:
-            results_pred_dict = {}
-        cpu_device = torch.device("cpu")
-        total_timer = Timer()
-        inference_timer = Timer()
-        total_timer.tic()
-        reg_recalls = []
 
-        # imgs = imgs.to(self.device)
-
-        # graph handler added
-        gt_data_path = '/home/ncl/ADD_sy/inference/sg_inference/ontology_interface/gt_data/VG_SGG_dicts.json'
-        gt_data_obj = GTDictHandler(gt_data_path)
-
-        for i, data in enumerate(data_loader, 0):
-            logger.info("inference on batch {}/{}...".format(i, len(self.data_loader_test)))
-            logger.info("analyzing_model.py 229")
-            # TODO
-            imgs, _ = data
-            imgs = imgs.to(self.device)
-            image_ids = (122,)
-            # import pdb; pdb.set_trace()
-            with torch.no_grad():
-                if timer:
-                    timer.tic()
-                # import pdb; pdb.set_trace()
-                # bbox +
-                output = self.scene_parser(imgs)
-
-                if self.cfg.MODEL.RELATION_ON:
-                    output, output_pred = output
-                    output_pred = [o.to(cpu_device) for o in output_pred]
-
-                # output_pred
-                # ious = bbox_overlaps(targets[0].bbox, output[0].bbox)
-                # reg_recall = (ious.max(1)[0] > 0.5).sum().item() / ious.shape[0]
-                # reg_recalls.append(reg_recall)
-                if timer:
-                    torch.cuda.synchronize()
-                    timer.toc()
-                output = [o.to(cpu_device) for o in output]
-
-                if visualize:
-                    self.visualize_detection(self.data_loader_test.dataset, image_ids, imgs.squeeze(0), output, live=live)
-                # CHECK
-                # breakpoint()
-                results_dict.update(
-                    {img_id: result for img_id, result in zip(image_ids, output)}
-                )
-                # targets_dict.update(
-                #     {img_id: target for img_id, target in zip(image_ids, targets)}
-                # )
-                # breakpoint()
-                if self.cfg.MODEL.RELATION_ON:
-                    results_pred_dict.update(
-                        {img_id: result for img_id, result in zip(image_ids, output_pred)}
-                    )
-
-                predictions = self._accumulate_predictions_from_multiple_gpus(results_dict)
-
-                # breakpoint()
-                if self.cfg.MODEL.RELATION_ON:
-                    predictions_pred = self._accumulate_predictions_from_multiple_gpus(results_pred_dict)
-                if not is_main_process():
-                    return
-
-                extra_args = dict(
-                    box_only=False if self.cfg.MODEL.RETINANET_ON else self.cfg.MODEL.RPN_ONLY,
-                    iou_types=("bbox",),
-                    expected_results=self.cfg.TEST.EXPECTED_RESULTS,
-                    expected_results_sigma_tol=self.cfg.TEST.EXPECTED_RESULTS_SIGMA_TOL,
-                )
-                eval_det_results = evaluate(dataset=self.data_loader_test.dataset,
-                                            predictions=predictions,
-                                            output_folder=output_folder,
-                                            image_ids=image_ids,
-                                            **extra_args)
-                breakpoint()
-                if self.cfg.MODEL.RELATION_ON:
-                    evaluate_sg(dataset=self.data_loader_test.dataset,
-                                predictions=predictions,
-                                predictions_pred=predictions_pred,
-                                output_folder=output_folder,
-                                image_ids=image_ids,
-                                **extra_args)
-                    if visualize:
-                        # import pdb; pdb.set_trace()
-                        demo_merge_json_org(image_ids)
-                        jsonMaker = JsonTranslator(gt_data_obj)
-                        result_data_path = f'/home/ncl/ADD_sy/inference/sg_inference/results/to_send/{image_ids[0]}_merged.json'
-                        jsonMaker.make_json(result_data_path, img_name=f'{image_ids[0]}_image',
-                                            FileName=f'{image_ids[0]}_image')
-                        generated_json_path = f'/home/ncl/ADD_sy/inference/sg_inference/results/to_send/{image_ids[0]}_image.json'
-                        graph_obj = GraphHandler(generated_json_path)
-                        graph_obj.generate_SG(recall=20)
-                        graph_drawer = GraphDrawer(graph_obj)
-                        graph_drawer.draw_and_save(figure_name=f'{image_ids[0]}_sg')
-                    if live:
-                        sg = cv2.imread(
-                            f'/home/ncl/ADD_sy/inference/sg_inference/visualize/sg_result/{image_ids[0]}_sg.png')
-                        cv2.imshow('scene_graph', sg)
-                        cv2.waitKey(10)
-
-                print(f'{image_ids[0]} done')
-    def singe_test(self, imgs, timer=None, visualize=False, live=False, output_folder="results/"):
-        """
-        main body for testing scene graph generation model
-        """
-        logger = logging.getLogger("scene_graph_generation.inference")
-        logger.info("Start evaluating")
-        self.scene_parser.eval()
-        targets_dict = {}
-        results_dict = {}
-        if self.cfg.MODEL.RELATION_ON:
-            results_pred_dict = {}
-        cpu_device = torch.device("cpu")
-        total_timer = Timer()
-        inference_timer = Timer()
-        total_timer.tic()
-        reg_recalls = []
-
-        imgs = imgs.to(self.device)
-
-        # graph handler added
-        gt_data_path = '/home/ncl/ADD_sy/inference/sg_inference/ontology_interface/gt_data/VG_SGG_dicts.json'
-        gt_data_obj = GTDictHandler(gt_data_path)
-
-        # for i, data in enumerate(self.data_loader_test, 0):
-        #     logger.info("inference on batch {}/{}...".format(i, len(self.data_loader_test)))
-        #     logger.info("analyzing_model.py 229")
-        #     # TODO
-        #     imgs, targets, image_ids = data
-        imgs = imgs.to(self.device)
-        image_ids = (122,)
-        # import pdb; pdb.set_trace()
-        with torch.no_grad():
-            if timer:
-                timer.tic()
-            # import pdb; pdb.set_trace()
-            # bbox +
-            output = self.scene_parser(imgs)
-
-            if self.cfg.MODEL.RELATION_ON:
-                output, output_pred = output
-                output_pred = [o.to(cpu_device) for o in output_pred]
-            # output_pred
-            # ious = bbox_overlaps(targets[0].bbox, output[0].bbox)
-            # reg_recall = (ious.max(1)[0] > 0.5).sum().item() / ious.shape[0]
-            # reg_recalls.append(reg_recall)
-            if timer:
-                torch.cuda.synchronize()
-                timer.toc()
-            output = [o.to(cpu_device) for o in output]
-
-            if visualize:
-                self.visualize_detection(self.data_loader_test.dataset, image_ids, imgs.squeeze(0), output, live=live)
-            # CHECK
-            # breakpoint()
-            results_dict.update(
-                {img_id: result for img_id, result in zip(image_ids, output)}
-            )
-            # targets_dict.update(
-            #     {img_id: target for img_id, target in zip(image_ids, targets)}
-            # )
-            # breakpoint()
-            if self.cfg.MODEL.RELATION_ON:
-                results_pred_dict.update(
-                    {img_id: result for img_id, result in zip(image_ids, output_pred)}
-                )
-
-            predictions = self._accumulate_predictions_from_multiple_gpus(results_dict)
-
-            # breakpoint()
-            if self.cfg.MODEL.RELATION_ON:
-                predictions_pred = self._accumulate_predictions_from_multiple_gpus(results_pred_dict)
-            if not is_main_process():
-                return
-
-            extra_args = dict(
-                box_only=False if self.cfg.MODEL.RETINANET_ON else self.cfg.MODEL.RPN_ONLY,
-                iou_types=("bbox",),
-                expected_results=self.cfg.TEST.EXPECTED_RESULTS,
-                expected_results_sigma_tol=self.cfg.TEST.EXPECTED_RESULTS_SIGMA_TOL,
-            )
-            eval_det_results = evaluate(dataset=self.data_loader_test.dataset,
-                            predictions=predictions,
-                            output_folder=output_folder,
-                            image_ids= image_ids,
-                            **extra_args)
-            # breakpoint()
-            if self.cfg.MODEL.RELATION_ON:
-                evaluate_sg(dataset=self.data_loader_test.dataset,
-                                predictions=predictions,
-                                predictions_pred=predictions_pred,
-                                output_folder=output_folder,
-                                image_ids = image_ids,
-                                **extra_args)
-                if visualize:
-                    # import pdb; pdb.set_trace()
-                    demo_merge_json(image_ids)
-                    jsonMaker = JsonTranslator(gt_data_obj)
-                    result_data_path = f'/home/ncl/ADD_sy/inference/sg_inference/results/to_send/{image_ids[0]}_merged.json'
-                    jsonMaker.make_json(result_data_path, img_name=f'{image_ids[0]}_image',FileName=f'{image_ids[0]}_image')
-                    generated_json_path = f'/home/ncl/ADD_sy/inference/sg_inference/results/to_send/{image_ids[0]}_image.json'
-                    graph_obj = GraphHandler(generated_json_path)
-                    graph_obj.generate_SG(recall=20)
-                    graph_drawer = GraphDrawer(graph_obj)
-                    graph_drawer.draw_and_save(figure_name=f'{image_ids[0]}_sg')
-                if live:
-                    sg = cv2.imread(
-                        f'/home/ncl/ADD_sy/inference/sg_inference/visualize/sg_result/{image_ids[0]}_sg.png')
-                    cv2.imshow('scene_graph', sg)
-                    cv2.waitKey(10)
-
-
-            print(f'{image_ids[0]} done')
-
-    def test(self, timer=None, visualize=False, live=False, output_folder="results/"):
+    def test(self, data_loader=None, timer=None, visualize=False, live=False, output_folder="results/"):
         """
         test_0220
         original
@@ -946,8 +564,8 @@ class SceneGraphGeneration:
 
         for i, data in enumerate(self.data_loader_test, 0):
             logger.info("inference on batch {}/{}...".format(i, len(self.data_loader_test)))
-            logger.info("analyzing_model.py 229")
-            # TODO
+
+
             # import pdb; pdb.set_trace()
             imgs, targets, image_ids = data
             imgs = imgs.to(self.device); targets = [target.to(self.device) for target in targets]
@@ -959,13 +577,11 @@ class SceneGraphGeneration:
                 if timer:
                     timer.tic()
                 # import pdb; pdb.set_trace()
-                # parser.py 의 forward 결과값
-                # detections 는 bbox, detection_pairs는 pair
+                # parser.py  forward result
+                # detections == bbox, detection_pairs are pair
                 # output = result = (detections, detection_pairs)
                 output = self.scene_parser(imgs)
-                # breakpoint()
-                # output check
-                # output check
+
                 if self.cfg.MODEL.RELATION_ON:
                     output, output_pred = output
                     output_pred = [o.to(cpu_device) for o in output_pred]
@@ -985,17 +601,15 @@ class SceneGraphGeneration:
                 output = [o.to(cpu_device) for o in output]
 
                 # if visualize:
-                #     self.visualize_detection_2020(self.data_loader_test.dataset, image_ids, imgs, output, live=live)
-                # CHECK
-                # breakpoint()
+                #     self.visualize_detection(self.data_loader_test.dataset, image_ids, imgs, output, live=live)
+
                 results_dict.update(
                     {img_id: result for img_id, result in zip(image_ids, output)}
                 )
                 targets_dict.update(
                     {img_id: target for img_id, target in zip(image_ids, targets)}
                 )
-                # breakpoint()
-                #"test"
+
                 if self.cfg.MODEL.RELATION_ON:
                     results_pred_dict.update(
                         {img_id: result for img_id, result in zip(image_ids, output_pred)}
@@ -1022,32 +636,25 @@ class SceneGraphGeneration:
                 )
                 predictions = self._accumulate_predictions_from_multiple_gpus(results_dict)
 
-                # breakpoint()
+
                 if self.cfg.MODEL.RELATION_ON:
                     predictions_pred = self._accumulate_predictions_from_multiple_gpus(results_pred_dict)
                 if not is_main_process():
                     return
 
-                # output_folder = "results"
-                # if output_folder:
-                #     if not os.path.exists(output_folder):
-                #         os.mkdir(output_folder)
-                #     torch.save(predictions, os.path.join(output_folder, str(image_ids[0])+"_predictions.pth"))
-                #     if self.cfg.MODEL.RELATION_ON:
-                #         torch.save(predictions_pred, os.path.join(output_folder, str(image_ids[0])+"_predictions_pred.pth"))
-                # ? TEST.EXPECTED.RESULTS
                 extra_args = dict(
                     box_only=False if self.cfg.MODEL.RETINANET_ON else self.cfg.MODEL.RPN_ONLY,
                     iou_types=("bbox",),
                     expected_results=self.cfg.TEST.EXPECTED_RESULTS,
                     expected_results_sigma_tol=self.cfg.TEST.EXPECTED_RESULTS_SIGMA_TOL,
                 )
+                # in real inference, it doesn't need
                 eval_det_results = evaluate(dataset=self.data_loader_test.dataset,
                                 predictions=predictions,
                                 output_folder=output_folder,
                                 image_ids= image_ids,
                                 **extra_args)
-                # breakpoint()
+
                 if self.cfg.MODEL.RELATION_ON:
                     evaluate_sg(dataset=self.data_loader_test.dataset,
                                     predictions=predictions,
@@ -1057,159 +664,26 @@ class SceneGraphGeneration:
                                     **extra_args)
                     demo_merge_json(image_ids)
                     if visualize:
-                        # import pdb; pdb.set_trace()
+
                         demo_merge_json_org(image_ids)
-                        # jsonMaker = JsonTranslator(gt_data_obj)
                         result_data_path = f'/home/ncl/ADD_sy/inference/sg_inference/results/to_send/{image_ids[0]}_merged.json'
-                        # jsonMaker.make_json(result_data_path, img_name=f'{image_ids[0]}_image', recall=10,
-                        #                     FileName=f'{image_ids[0]}_image')
-                        # generated_json_path = f'/home/ncl/ADD_sy/inference/sg_inference/results/to_send/{image_ids[0]}_image.json'
+
                         graph_obj = GraphHandlerDemo(result_data_path, gt_data_obj)
                         graph_obj.get_name(rank=20, image_ids = image_ids)
                         graph_obj.generate_SG(rank=20)
                         graph_drawer = GraphDrawer(graph_obj)
                         print('done')
                         graph_drawer.draw_and_save(figure_name=f'{image_ids[0]}_sg')
-                        self.visualize_detection_2020(self.data_loader_test.dataset, image_ids, imgs, output, live=live)
+                        self.visualize_detection(self.data_loader_test.dataset, image_ids, imgs, output, live=live)
 
-                        # original
-                        # demo_merge_json(image_ids)
-                        # jsonMaker = JsonTranslator(gt_data_obj)
-                        # result_data_path = f'/home/ncl/ADD_sy/inference/sg_inference/results/to_send/{image_ids[0]}_merged.json'
-                        # jsonMaker.make_json(result_data_path, img_name=f'{image_ids[0]}_image',FileName=f'{image_ids[0]}_image')
-                        # generated_json_path = f'/home/ncl/ADD_sy/inference/sg_inference/results/to_send/{image_ids[0]}_image.json'
-                        # graph_obj = GraphHandler(generated_json_path)
-                        # graph_obj.generate_SG(rank=20)
-                        # graph_drawer = GraphDrawer(graph_obj)
-                        # graph_drawer.draw_and_save(figure_name=f'{image_ids[0]}_sg')
                     if live:
                         sg = cv2.imread(
                             f'/home/ncl/ADD_sy/inference/sg_inference/visualize/sg_result/{image_ids[0]}_sg.png')
                         cv2.imshow('scene_graph', sg)
                         cv2.waitKey(10)
 
-
                 print(f'{image_ids[0]} done')
 
-    def original_test(self, timer=None, visualize=False, live=False, output_folder="results"):
-        """
-        main body for testing scene graph generation model
-        """
-        logger = logging.getLogger("scene_graph_generation.inference")
-        logger.info("Start evaluating")
-        self.scene_parser.eval()
-        targets_dict = {}
-        results_dict = {}
-        if self.cfg.MODEL.RELATION_ON:
-            results_pred_dict = {}
-        cpu_device = torch.device("cpu")
-        total_timer = Timer()
-        inference_timer = Timer()
-        total_timer.tic()
-        reg_recalls = []
-        for i, data in enumerate(self.data_loader_test, 0):
-            logger.info("inference on batch {}/{}...".format(i, len(self.data_loader_test)))
-            logger.info("analyzing_model.py 229")
-            imgs, targets, image_ids = data
-            imgs = imgs.to(self.device); targets = [target.to(self.device) for target in targets]
-            # if i % 10 == 1:
-            #     logger.info("inference on batch {}/{}...".format(i, len(self.data_loader_test)))
-            #     logger.info("analyzing_model.py 229")
-            #     break
-            with torch.no_grad():
-                if timer:
-                    timer.tic()
-                # import pdb; pdb.set_trace()
-                # bbox +
-                output = self.scene_parser(imgs)
-
-                if self.cfg.MODEL.RELATION_ON:
-                    output, output_pred = output
-                    output_pred = [o.to(cpu_device) for o in output_pred]
-                # output_pred
-                ious = bbox_overlaps(targets[0].bbox, output[0].bbox)
-                reg_recall = (ious.max(1)[0] > 0.5).sum().item() / ious.shape[0]
-                reg_recalls.append(reg_recall)
-                if timer:
-                    torch.cuda.synchronize()
-                    timer.toc()
-                output = [o.to(cpu_device) for o in output]
-
-                if visualize:
-                    self.visualize_detection(self.data_loader_test.dataset, image_ids, imgs, output, live=live)
-            # CHECK
-            # breakpoint()
-            results_dict.update(
-                {img_id: result for img_id, result in zip(image_ids, output)}
-            )
-            targets_dict.update(
-                {img_id: target for img_id, target in zip(image_ids, targets)}
-            )
-            # breakpoint()
-            if self.cfg.MODEL.RELATION_ON:
-                results_pred_dict.update(
-                    {img_id: result for img_id, result in zip(image_ids, output_pred)}
-                )
-            if self.cfg.instance > 0 and i > self.cfg.instance:
-                break
-            break
-        synchronize()
-        total_time = total_timer.toc()
-        total_time_str = get_time_str(total_time)
-        num_devices = get_world_size()
-        logger.info(
-            "Total run time: {} ({} s / img per device, on {} devices)".format(
-                total_time_str, total_time * num_devices / len(self.data_loader_test.dataset), num_devices
-            )
-        )
-        total_infer_time = get_time_str(inference_timer.total_time)
-        logger.info(
-            "Model inference time: {} ({} s / img per device, on {} devices)".format(
-                total_infer_time,
-                inference_timer.total_time * num_devices / len(self.data_loader_test.dataset),
-                num_devices,
-            )
-        )
-        predictions = self._accumulate_predictions_from_multiple_gpus(results_dict)
-
-        # breakpoint()
-        if self.cfg.MODEL.RELATION_ON:
-            predictions_pred = self._accumulate_predictions_from_multiple_gpus(results_pred_dict)
-        if not is_main_process():
-            return
-
-        # output_folder = "results"
-        # if output_folder:
-        #     if not os.path.exists(output_folder):
-        #         os.mkdir(output_folder)
-        #     torch.save(predictions, os.path.join(output_folder, "predictions.pth"))
-        #     if self.cfg.MODEL.RELATION_ON:
-        #         torch.save(predictions_pred, os.path.join(output_folder, "predictions_pred.pth"))
-        # ? TEST.EXPECTED.RESULTS
-        extra_args = dict(
-            box_only=False if self.cfg.MODEL.RETINANET_ON else self.cfg.MODEL.RPN_ONLY,
-            iou_types=("bbox",),
-            expected_results=self.cfg.TEST.EXPECTED_RESULTS,
-            expected_results_sigma_tol=self.cfg.TEST.EXPECTED_RESULTS_SIGMA_TOL,
-        )
-        evaluate(dataset=self.data_loader_test.dataset,
-                        predictions=predictions,
-                        output_folder=output_folder,
-                        **extra_args)
-        # breakpoint()
-        if self.cfg.MODEL.RELATION_ON:
-            evaluate_sg(dataset=self.data_loader_test.dataset,
-                            predictions=predictions,
-                            predictions_pred=predictions_pred,
-                            output_folder=output_folder,
-                            **extra_args)
-
-        # merge_json()
-        # generate_graph()
-        # if live:
-        #     cv2.imshow()
-        # else:
-        #     cv2.imwrite()
 
 def build_model(cfg, args, arguments, local_rank, distributed):
 
@@ -1220,6 +694,3 @@ def build_model(cfg, args, arguments, local_rank, distributed):
     else:
         # test mode with visual genome dataset
         return SceneGraphGeneration(cfg, arguments, local_rank, distributed)
-
-# def build_model(cfg, arguments, local_rank, distributed):
-#     return SceneGraphGeneration(cfg, arguments, local_rank, distributed)
