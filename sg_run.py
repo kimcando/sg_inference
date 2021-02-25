@@ -55,15 +55,10 @@ def prediction(cg, args, loader, model=None):
     if model is None:
         arguments = {}
         arguments["iteration"] = 0
-        model = build_model(cfg, arguments, args.local_rank, args.distributed)
+        model = build_model(cfg, args, arguments, args.local_rank, args.distributed)
     model.test(loader, output_folder = 'results/bbox/',visualize=args.visualize, live=args.live)
     # model.test_0220(output_folder='results/bbox/', visualize=args.visualize, live=args.live)
 
-
-def merge_json(bbx_json_dir, triplet_json_dir):
-    """merge final json form to be sent"""
-    pass
-    return final_json
 
 def main():
     # TODO
@@ -82,6 +77,7 @@ def main():
     parser.add_argument("--algorithm", type=str, default='sg_baseline')
     parser.add_argument("--live", action='store_true')
     parser.add_argument("--single_test", action='store_true')
+    parser.add_argument("--raw_img", action='store_true')
     args = parser.parse_args()
 
     num_gpus = int(os.environ["WORLD_SIZE"]) if "WORLD_SIZE" in os.environ else 1
@@ -127,7 +123,7 @@ def main():
     test_loader = load_test_loader()
     prediction(cfg, args, test_loader)
     # prediction(img, bbox_json_dir, triplet_json_dir)
-    # final_json = merge_json(bbox_json_dir, triplet_json_dir)
+
     #
     # if not os.path.exists(final_result_dir):
     #     os.mkdir(final_result_dir)

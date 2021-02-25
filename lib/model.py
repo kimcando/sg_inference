@@ -36,7 +36,7 @@ class OntoSceneGraphGeneration:
         self.arguments = arguments.copy()
         self.device = torch.device("cuda")
 
-        #TODO
+        # TODO
         self.data_loader_test = build_data_loader(cfg, split="test", is_distributed=distributed)
 
         logger = logging.getLogger("scene_graph_generation.inference")
@@ -153,6 +153,7 @@ class OntoSceneGraphGeneration:
         for i, prediction in enumerate(predictions):
             top_prediction = select_top_predictions(prediction)
             # print('top predcition',len(top_prediction))
+            # TODO
             img = imgs.permute(1, 2, 0).contiguous().cpu().numpy() # + np.array(self.cfg.INPUT.PIXEL_MEAN).reshape(1, 1, 3)
             result = img.copy()
             # import pdb; pdb.set_trace()
@@ -169,7 +170,7 @@ class OntoSceneGraphGeneration:
             else:
                 # cv2.imwrite(os.path.join(visualize_folder + '/' + raw_folder, "raw_detection_{}.jpg".format(img_ids[i])),
                 #             result)
-                breakpoint()
+                # breakpoint()
                 im = Image.fromarray(result.astype(np.uint8))
                 im.save(f'{visualize_folder}/{raw_folder}/raw_detection_{img_ids[i]}.jpg')
 
@@ -193,18 +194,18 @@ class OntoSceneGraphGeneration:
                 im.save(f'{visualize_folder}/{bbox_folder}/bbox_detection_{img_ids[i]}.jpg')
                 # im.save(visualize_folder + '/' + bbox_folder, "bbox_detection_{}.jpg".format(img_ids[i]))
 
-    def load_test_data(self, img_dir, test_save_img=False):
-
-        img_list = glob(f'{img_dir}/*')
-        # for img_file in img_list:
-        img_pil = Image.open(img_list[0])
-        img_pil = np.array(img_pil).transpose(2, 0, 1)
-        # img = ToTensor()(img_pil).unsqueeze(0) # ToTensor 하면 normalize 도 자동으로 됨
-        img = torch.from_numpy(img_pil).unsqueeze(0).float()
-        file_name = img_dir.split('/')[-1].split('.')[0]
-        if test_save_img:
-            save_image(img_dir)
-        return img, file_name
+    # def load_test_data(self, img_dir, test_save_img=False):
+    #
+    #     img_list = glob(f'{img_dir}/*')
+    #     # for img_file in img_list:
+    #     img_pil = Image.open(img_list[0])
+    #     img_pil = np.array(img_pil).transpose(2, 0, 1)
+    #     # img = ToTensor()(img_pil).unsqueeze(0) # ToTensor 하면 normalize 도 자동으로 됨
+    #     img = torch.from_numpy(img_pil).unsqueeze(0).float()
+    #     file_name = img_dir.split('/')[-1].split('.')[0]
+    #     if test_save_img:
+    #         save_image(img_dir)
+    #     return img, file_name
 
     def test(self, data_loader, test_single=False,timer=None, visualize=False, live=False, output_folder="results/"):
         """
@@ -317,7 +318,6 @@ class OntoSceneGraphGeneration:
             for i, data in enumerate(data_loader, 0):
                 logger.info("inference on batch {}/{}...".format(i, len(self.data_loader_test)))
 
-                breakpoint()
                 imgs, _ = data
                 imgs = imgs.to(self.device)
                 idx = i+10000
@@ -333,13 +333,20 @@ class OntoSceneGraphGeneration:
                         output, output_pred = output
                         output_pred = [o.to(cpu_device) for o in output_pred]
 
+                    torch.save(output,
+                               os.path.join('/home/ncl/ADD_sy/inference/sg_inference/results/output',
+                                            f'{image_ids[0]}_output.pth'))
+                    torch.save(output_pred,
+                               os.path.join('/home/ncl/ADD_sy/inference/sg_inference/results/output',
+                                            f'{image_ids[0]}_output_pred.pth'))
+
                     if timer:
                         torch.cuda.synchronize()
                         timer.toc()
                     output = [o.to(cpu_device) for o in output]
 
-                    if visualize:
-                        self.visualize_detection(self.data_loader_test.dataset, image_ids, imgs.squeeze(0), output, live=live)
+                    # if visualize:
+                    #     self.visualize_detection(self.data_loader_test.dataset, image_ids, imgs.squeeze(0), output, live=live)
                     # CHECK
                     # breakpoint()
                     results_dict.update(
@@ -381,18 +388,32 @@ class OntoSceneGraphGeneration:
                                     output_folder=output_folder,
                                     image_ids=image_ids,
                                     **extra_args)
+                        demo_merge_json(image_ids)
                         if visualize:
                             # import pdb; pdb.set_trace()
-                            demo_merge_json(image_ids)
-                            jsonMaker = JsonTranslator(gt_data_obj)
+                            demo_merge_json_org(image_ids)
                             result_data_path = f'/home/ncl/ADD_sy/inference/sg_inference/results/to_send/{image_ids[0]}_merged.json'
-                            jsonMaker.make_json(result_data_path, img_name=f'{image_ids[0]}_image',
-                                                FileName=f'{image_ids[0]}_image')
-                            generated_json_path = f'/home/ncl/ADD_sy/inference/sg_inference/results/to_send/{image_ids[0]}_image.json'
-                            graph_obj = GraphHandler(generated_json_path)
-                            graph_obj.generate_SG(recall=5)
+                            # jsonMaker.make_json(result_data_path, img_name=f'{image_ids[0]}_image', recall=10,
+                            #                     FileName=f'{image_ids[0]}_image')
+                            # generated_json_path = f'/home/ncl/ADD_sy/inference/sg_inference/results/to_send/{image_ids[0]}_image.json'
+                            graph_obj = GraphHandlerDemo(result_data_path, gt_data_obj)
+                            graph_obj.get_name(rank=20, image_ids=image_ids)
+                            graph_obj.generate_SG(rank=20)
                             graph_drawer = GraphDrawer(graph_obj)
+                            print('done')
                             graph_drawer.draw_and_save(figure_name=f'{image_ids[0]}_sg')
+                            self.visualize_detection(self.data_loader_test.dataset, image_ids, imgs.squeeze(0), output,
+                                                     live=live)
+                            # original
+                            # jsonMaker = JsonTranslator(gt_data_obj)
+                            # result_data_path = f'/home/ncl/ADD_sy/inference/sg_inference/results/to_send/{image_ids[0]}_merged.json'
+                            # jsonMaker.make_json(result_data_path, img_name=f'{image_ids[0]}_image',
+                            #                     FileName=f'{image_ids[0]}_image')
+                            # generated_json_path = f'/home/ncl/ADD_sy/inference/sg_inference/results/to_send/{image_ids[0]}_image.json'
+                            # graph_obj = GraphHandler(generated_json_path)
+                            # graph_obj.generate_SG(recall=5)
+                            # graph_drawer = GraphDrawer(graph_obj)
+                            # graph_drawer.draw_and_save(figure_name=f'{image_ids[0]}_sg')
                         if live:
                             sg = cv2.imread(
                                 f'/home/ncl/ADD_sy/inference/sg_inference/visualize/sg_result/{image_ids[0]}_sg.png')
@@ -729,14 +750,14 @@ class SceneGraphGeneration:
                 if visualize:
                     self.visualize_detection(self.data_loader_test.dataset, image_ids, imgs.squeeze(0), output, live=live)
                 # CHECK
-                breakpoint()
+                # breakpoint()
                 results_dict.update(
                     {img_id: result for img_id, result in zip(image_ids, output)}
                 )
                 # targets_dict.update(
                 #     {img_id: target for img_id, target in zip(image_ids, targets)}
                 # )
-                breakpoint()
+                # breakpoint()
                 if self.cfg.MODEL.RELATION_ON:
                     results_pred_dict.update(
                         {img_id: result for img_id, result in zip(image_ids, output_pred)}
@@ -1190,9 +1211,15 @@ class SceneGraphGeneration:
         # else:
         #     cv2.imwrite()
 
-def build_model(cfg, arguments, local_rank, distributed):
-    return SceneGraphGeneration(cfg, arguments, local_rank, distributed)
-    # return OntoSceneGraphGeneration(cfg, arguments, local_rank, distributed)
+def build_model(cfg, args, arguments, local_rank, distributed):
+
+    if args.raw_img:
+        # image inference
+        # image stroed at '/home/ncl/ADD_sy/inference/sg_inference/lib/data'
+        return OntoSceneGraphGeneration(cfg, arguments, local_rank, distributed)
+    else:
+        # test mode with visual genome dataset
+        return SceneGraphGeneration(cfg, arguments, local_rank, distributed)
 
 # def build_model(cfg, arguments, local_rank, distributed):
 #     return SceneGraphGeneration(cfg, arguments, local_rank, distributed)
