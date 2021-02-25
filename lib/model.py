@@ -197,7 +197,8 @@ class OntoSceneGraphGeneration:
         main body for testing scene graph generation model
         """
         logger = logging.getLogger("scene_graph_generation.inference")
-        logger.info("Start evaluating")
+        logger.info("Start evaluating on data under")
+        logger.info("./sg_inference/data")
         self.scene_parser.eval()
         targets_dict = {}
         results_dict = {}
@@ -219,7 +220,7 @@ class OntoSceneGraphGeneration:
             imgs, _ = data
             imgs = imgs.to(self.device)
             # TODO
-            image_ids = (i + 1000000,)
+            image_ids = (i,)
 
             with torch.no_grad():
                 if timer:
@@ -521,7 +522,7 @@ class SceneGraphGeneration:
                     f'/home/ncl/ADD_sy/inference/sg_inference/visualize/raw/raw_detection_{img_ids[0]}.jpg')
                 cv2.imshow('raw_image', img)
                 cv2.waitKey(20)
-         
+
             else:
                 cv2.imwrite(os.path.join(visualize_folder + '/' + raw_folder, "raw_detection_{}.jpg".format(img_ids[i])),
                             result)
